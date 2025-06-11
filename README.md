@@ -1,0 +1,41 @@
+- Flask Application
+  - Website (index.html)
+    - Announcement Display
+      - Source: Database (e.g., SQLite) managed via Dashboard
+    - Photo Request Submission Form
+      - Fields: User Name, Photo Description, File Upload
+      - Action: Submit to Server (Flask route)
+  - Dashboard (Admin Interface)
+    - Authentication/Authorization (for admin access)
+    - Announcement Management
+      - View current announcement
+      - Edit announcement text (via form)
+      - Save changes to database
+    - Photo Request Moderation
+      - List pending photo requests (from database/filesystem)
+      - View details of each request (user, description, preview if possible)
+      - Approve/Reject actions
+        - Approve:
+          - Move photo from temporary/pending folder to 'image' folder
+          - Update database status (e.g., 'approved')
+        - Reject:
+          - Delete photo from temporary/pending folder (optional)
+          - Update database status (e.g., 'rejected')
+  - Backend Logic (Flask Routes/Functions)
+    - Route for index.html (to display announcement)
+    - Route for photo submission (handle file upload, save to temp location, record in DB)
+    - Routes for Dashboard:
+      - Admin login/logout
+      - View announcements
+      - Update announcement
+      - View photo requests
+      - Approve photo request
+      - Reject photo request
+  - Database (e.g., SQLite)
+    - Table: Announcements
+      - Columns: id, text, last_updated
+    - Table: PhotoRequests
+      - Columns: id, user_name, description, filename, status (pending, approved, rejected), submission_date
+  - File System
+    - 'temp_uploads' or 'pending_images' folder (for submitted photos)
+    - 'image' folder (for approved photos)
