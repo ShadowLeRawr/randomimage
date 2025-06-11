@@ -1,0 +1,89 @@
+# /etc/nginx/sites-available/slitsndicks.net
+
+# Redirect HTTP traffic from the server's IP address to HTTPS with the domain name
+server {
+    listen 80;
+    server_name 74.235.121.215; # Your server's public IP address
+    return 301 https://slitsndicks.net$request_uri;
+}
+
+# Your main server block for slitsndicks.net
+server {
+    listen 80; # For HTTP to HTTPS redirect for domain name (if not handled by the above block for the server name)
+    listen 443 ssl;
+
+    server_name slitsndicks.net www.slitsndicks.net; # Include www.subdomain if applicable
+
+    # *** SSL Configuration - REPLACE THESE PATHS ***
+    ssl_certificate /etc/nginx/ssl/cloudflare_origin.pem;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare_origin.key;
+    # *** END SSL Configuration ***
+
+    # OPTIONAL: Add recommended SSL settings (uncomment and configure if needed)
+    # include /etc/letsencrypt/options-ssl-nginx.conf; # If you use Let's Encrypt
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # If you use Let's Encrypt
+
+    # Define the root directory for serving static files that Nginx will handle directly
+    root /var/www/my_random_images;
+
+    # --- Static Files Configuration ---
+    # Nginx will serve these files directly for performance.
+
+    # Serve your approved images folder (publicly accessible)
+    location /images/ {
+        alias /var/www/my_random_images/images/; # Absolute path to your images folder
+        expires 30d; # Cache static files for 30 days
+        access_log off; # Disable logging for static assets to reduce log size
+    }
+
+    # Serve your pending images folder (usually not directly linked from public site, but might be for dashboard previews)
+    location /pending/ {
+        alias /var/www/my_random_images/pending/; # Absolute path to your pending folder
+        expires 0; # No caching for pending images (they might be deleted quickly)
+        access_log off;
+    }
+
+    # If you have other custom static files (like site-specific CSS/JS for index.html that you manage manually)
+    # in a 'static' folder inside your project root:
+    location /static/ {
+        alias /var/www/my_random_images/static/; # Absolute path to your custom static folder
+        expires 7d; # Cache for 7 days
+        access_log off;
+    }
+
+    # --- Flask Application Proxy Pass (Default Behavior) ---
+    # This location block will proxy ALL requests that haven't been served by the
+    # specific static file locations above, to your Gunicorn/uWSGI application.
+    # This includes: /, /login, /logout, /dashboard, /api/announcement, /random-image-with-source
+    # and all other API endpoints.
+    location / {
+        proxy_pass http://127.0.0.1:8000; # Ensure this matches your Gunicorn bind address/port (or a socket)
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off; # Important: prevent Nginx from rewriting response redirects
+
+        # Standard headers that Gunicorn/Flask often expect
+        proxy_set_header Upgrade $http_upgrade; # For WebSockets (if Flask uses them)
+        proxy_set_header Connection "upgrade"; # For WebSockets
+        proxy_set_header Referer $http_referer;
+        # Add other headers if your Flask app or any intermediate proxies require them
+        # proxy_set_header Sec-WebSocket-Key $http_sec_websocket_key;
+        # proxy_set_header Sec-WebSocket-Version $http_sec_websocket_version;
+
+        # Optional: increase buffer size if you have large requests/responses
+        # proxy_buffers 16 4k;
+        # proxy_buffer_size 2k;
+    }
+
+    # Error handling pages
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+
+    # Access and Error logs
+    access_log /var/log/nginx/slitsndicks.net_access.log; # Recommended to use specific log file names
+    error_log /var/log/nginx/slitsndicks.net_error.log;   # Recommended to use specific log file names
+}

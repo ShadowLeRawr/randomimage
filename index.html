@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Slits n Dicks :3</title>
+  <style>
+    /* Basic Dark Mode Styling (keep your existing styles) */
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #1a1a1a; /* Dark background */
+      color: #f0f0f0; /* Light text color */
+      padding: 20px; /* Add some padding for spacing */
+      padding-bottom: 40px; /* Add padding to the bottom */
+      box-sizing: border-box; /* Include padding in element's total width and height */
+    }
+
+    h1 {
+        color: #ffffff; /* White heading */
+        margin-bottom: 20px;
+    }
+
+    img {
+      max-width: 90%;
+      max-height: 70vh;
+      height: auto; /* Maintain aspect ratio */
+      margin-bottom: 20px;
+      border: 1px solid #555; /* Slightly lighter border */
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5); /* More prominent shadow */
+      display: block; /* Prevent extra space below image */
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      background-color: #333; /* Dark button background */
+      color: #f0f0f0; /* Light button text */
+      border: 1px solid #555;
+      border-radius: 5px;
+      transition: background-color 0.3s ease; /* Smooth transition on hover */
+    }
+
+    button:hover {
+        background-color: #555; /* Slightly lighter on hover */
+    }
+
+    #sourceInfo {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #555; /* Darker border */
+        background-color: #333; /* Dark background */
+        color: #f0f0f0; /* Light text */
+        width: 100%; /* Occupy full width of container */
+        max-width: 600px; /* Limit maximum width */
+        text-align: left;
+        border-radius: 8px;
+        box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+        margin-bottom: 20px; /* Add spacing below source info */
+    }
+
+    #sourceInfo p {
+        margin: 5px 0;
+        word-wrap: break-word; /* Prevent long URLs from overflowing */
+    }
+
+    #sourceInfo a {
+        color: #9bb0f0; /* Lighter link color for dark mode */
+        text-decoration: none;
+    }
+
+    #sourceInfo a:hover {
+        text-decoration: underline;
+    }
+
+    /* Style for the Source Information title and labels */
+    #sourceInfo p:first-child, /* Target the first paragraph (the title) */
+    #sourceInfo strong {      /* Target the strong tags (the labels) */
+        color: #8fbc8f; /* Greenish color */
+    }
+
+
+    /* Optional: Style for error messages */
+    #sourceInfo p[style*="color: red"] {
+        color: #ff6b6b !important; /* Reddish error text */
+    }
+
+
+  </style>
+</head>
+<body>
+  <h1>Slits n Dicks :3</h1>
+
+  <img id="randomImage" src="" alt="Random Image">
+  <button id="spiceButton">Random Spice</button>
+
+  <div id="sourceInfo">
+    <p>Source Information:</p>
+    <p id="sourceLink"></p>
+    <p id="artistInfo"></p>
+    <p id="similarityInfo"></p>
+  </div>
+
+
+  <script>
+    const randomImageElement = document.getElementById('randomImage');
+    const spiceButton = document.getElementById('spiceButton');
+    const sourceInfoDiv = document.getElementById('sourceInfo');
+    const sourceLinkElement = document.getElementById('sourceLink');
+    const artistInfoElement = document.getElementById('artistInfo');
+    const similarityInfoElement = document.getElementById('similarityInfo');
+
+
+    const fetchRandomImageAndSource = () => {
+        sourceInfoDiv.innerHTML = '<p>Loading image and source info...</p>'; // Loading indicator
+
+        // Reset source info content to only the title
+        sourceLinkElement.innerHTML = '';
+        artistInfoElement.innerHTML = '';
+        similarityInfoElement.innerHTML = '';
+
+
+        fetch('/random-image-with-source') // New endpoint in Flask
+            .then(response => {
+                if (!response.ok) {
+                     // Attempt to read error message from server
+                     return response.json().then(err => { throw new Error(`HTTP error! status: ${response.status}, Message: ${err.error || response.statusText}`); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.imageUrl) {
+                    randomImageElement.src = data.imageUrl;
+
+                    // Display source information
+                    if (data.source_results && data.source_results.length > 0) {
+                         const result = data.source_results[0]; // Display the top result
+                         sourceInfoDiv.innerHTML = '<p>Source Information:</p>'; // Clear loading message and keep title
+
+                         sourceLinkElement.innerHTML = `<strong>Source:</strong> <a href="${result.source_url}" target="_blank">${result.source_url}</a>`;
+                         artistInfoElement.innerHTML = `<strong>Artist:</strong> ${result.artist}`;
+                         similarityInfoElement.innerHTML = `<strong>Similarity:</strong> ${result.similarity}%`;
+
+                         sourceInfoDiv.appendChild(sourceLinkElement);
+                         sourceInfoDiv.appendChild(artistInfoElement);
+                         sourceInfoDiv.appendChild(similarityInfoElement);
+
+                    } else {
+                        sourceInfoDiv.innerHTML = '<p>Source Information:</p><p>No source information found on SauceNao.</p>';
+                    }
+                } else {
+                     sourceInfoDiv.innerHTML = `<p style="color: red;">Error: No image URL received: ${data.error || 'Unknown error'}</p>`; // Display more specific error
+                }
+            })
+            .catch(error => {
+                sourceInfoDiv.innerHTML = `<p style="color: red;">Error fetching image and source: ${error.message}</p>`; // Display fetch error
+            });
+    };
+
+    spiceButton.addEventListener('click', fetchRandomImageAndSource);
+
+
+    // Load a random image and source info when the page loads initially
+    document.addEventListener('DOMContentLoaded', fetchRandomImageAndSource);
+  </script>
+</body>
+</html>
