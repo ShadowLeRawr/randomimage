@@ -1,9 +1,9 @@
 import os
 import shutil # For moving files
+import sqlite3
 from datetime import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -13,9 +13,8 @@ admin_app = Flask(__name__, template_folder='.')
 # IMPORTANT: Change this to a strong, random key in production!
 admin_app.config['SECRET_KEY'] = 'another_super_secret_key_for_admin_app'
 
-# Database configuration (using SQLite for simplicity)
-admin_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
-admin_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Database configuration
+DATABASE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'site.db')
 
 # --- File Upload Configuration ---
 # Define the folders for pending and approved images
@@ -28,46 +27,84 @@ admin_app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 Megabytes limit f
 os.makedirs(admin_app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(admin_app.config['APPROVED_IMAGES_FOLDER'], exist_ok=True)
 
-# --- Database Initialization ---
-db = SQLAlchemy(admin_app)
+# --- Database Helper Functions ---
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
 
-# --- Define Database Models ---
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(120), nullable=False)
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+def insert_db(query, args=()):
+    db = get_db()
+    cur = db.execute(query, args)
+    db.commit()
+    last_id = cur.lastrowid
+    cur.close()
+    return last_id
 
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+def update_db(query, args=()):
+    db = get_db()
+    db.execute(query, args)
+    db.commit()
 
-    def __repr__(self):
-        return f'<User {self.username}>'
+@admin_app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
 
-class Announcement(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
-    last_updated = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
+def init_db():
+    with admin_app.app_context():
+        db = get_db()
+        with admin_app.open_resource('schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
 
-    def __repr__(self):
-        return f"Announcement('{self.text[:30]}...')"
-
-class PhotoRequest(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    filename = db.Column(db.String(255), nullable=False) # Original filename from user
-    pending_path = db.Column(db.String(500), nullable=True) # Full path in pending_uploads
-    approved_path = db.Column(db.String(500), nullable=True) # Full path in images folder
-    # Status: 'pending', 'approved', 'rejected'
-    status = db.Column(db.String(20), default='pending', nullable=False)
-    submission_date = db.Column(db.DateTime, default=db.func.now())
-    approval_date = db.Column(db.DateTime, nullable=True) # When it was approved/rejected
-
-    def __repr__(self):
-        return f"PhotoRequest('{self.user_name}', '{self.filename}', '{self.status}')"
+# --- Database Schema ---
+def create_tables():
+    db = get_db()
+    
+    # Create users table
+    db.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL
+    )
+    ''')
+    
+    # Create announcements table
+    db.execute('''
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT NOT NULL,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    # Create photo_requests table
+    db.execute('''
+    CREATE TABLE IF NOT EXISTS photo_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_name TEXT NOT NULL,
+        description TEXT,
+        filename TEXT NOT NULL,
+        pending_path TEXT,
+        approved_path TEXT,
+        status TEXT DEFAULT 'pending' NOT NULL,
+        submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        approval_date TIMESTAMP
+    )
+    ''')
+    
+    db.commit()
 
 # --- Helper Functions ---
 def is_logged_in():
@@ -82,6 +119,46 @@ def login_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
+def get_user_by_username(username):
+    return query_db('SELECT * FROM users WHERE username = ?', [username], one=True)
+
+def check_password(stored_password_hash, password):
+    return check_password_hash(stored_password_hash, password)
+
+def create_user(username, password):
+    password_hash = generate_password_hash(password)
+    insert_db('INSERT INTO users (username, password_hash) VALUES (?, ?)', [username, password_hash])
+
+def get_pending_requests():
+    return query_db('SELECT * FROM photo_requests WHERE status = "pending" ORDER BY submission_date DESC')
+
+def get_approved_requests():
+    return query_db('SELECT * FROM photo_requests WHERE status = "approved" ORDER BY approval_date DESC')
+
+def get_rejected_requests():
+    return query_db('SELECT * FROM photo_requests WHERE status = "rejected" ORDER BY approval_date DESC')
+
+def get_photo_request(id):
+    return query_db('SELECT * FROM photo_requests WHERE id = ?', [id], one=True)
+
+def create_photo_request(user_name, description, filename, pending_path):
+    return insert_db(
+        'INSERT INTO photo_requests (user_name, description, filename, pending_path, status) VALUES (?, ?, ?, ?, ?)',
+        [user_name, description, filename, pending_path, 'pending']
+    )
+
+def update_photo_request_approved(id, approved_path, filename):
+    update_db(
+        'UPDATE photo_requests SET status = ?, approved_path = ?, filename = ?, approval_date = CURRENT_TIMESTAMP WHERE id = ?',
+        ['approved', approved_path, filename, id]
+    )
+
+def update_photo_request_rejected(id):
+    update_db(
+        'UPDATE photo_requests SET status = ?, pending_path = NULL, approval_date = CURRENT_TIMESTAMP WHERE id = ?',
+        ['rejected', id]
+    )
+
 # --- Flask Routes ---
 
 # Login Page
@@ -93,9 +170,9 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        user = User.query.filter_by(username=username).first()
+        user = get_user_by_username(username)
         
-        if user and user.check_password(password):
+        if user and check_password(user['password_hash'], password):
             session['logged_in'] = True
             session['username'] = username
             flash('Logged in successfully.', 'success')
@@ -118,11 +195,11 @@ def logout():
 @login_required
 def admin_dashboard():
     # Get pending photo requests
-    pending_requests = PhotoRequest.query.filter_by(status='pending').order_by(PhotoRequest.submission_date.desc()).all()
+    pending_requests = get_pending_requests()
     # Get approved photo requests
-    approved_requests = PhotoRequest.query.filter_by(status='approved').order_by(PhotoRequest.approval_date.desc()).all()
+    approved_requests = get_approved_requests()
     # Get rejected photo requests
-    rejected_requests = PhotoRequest.query.filter_by(status='rejected').order_by(PhotoRequest.approval_date.desc()).all()
+    rejected_requests = get_rejected_requests()
     
     return render_template('admin_dashboard.html', 
                           pending_requests=pending_requests, 
@@ -133,9 +210,9 @@ def admin_dashboard():
 @admin_app.route('/approve/<int:id>')
 @login_required
 def approve_photo(id):
-    photo_request = PhotoRequest.query.get_or_404(id)
-    if photo_request.status == 'pending' and photo_request.pending_path and os.path.exists(photo_request.pending_path):
-        approved_filename = photo_request.filename
+    photo_request = get_photo_request(id)
+    if photo_request and photo_request['status'] == 'pending' and photo_request['pending_path'] and os.path.exists(photo_request['pending_path']):
+        approved_filename = photo_request['filename']
         destination_path = os.path.join(admin_app.config['APPROVED_IMAGES_FOLDER'], approved_filename)
 
         # Handle potential filename collisions
@@ -147,16 +224,11 @@ def approve_photo(id):
             counter += 1
 
         try:
-            shutil.move(photo_request.pending_path, destination_path)
-            photo_request.status = 'approved'
-            photo_request.approved_path = destination_path
-            photo_request.filename = approved_filename
-            photo_request.approval_date = datetime.now()
-            db.session.commit()
+            shutil.move(photo_request['pending_path'], destination_path)
+            update_photo_request_approved(id, destination_path, approved_filename)
             flash(f'Photo request {id} approved and moved to images folder as {approved_filename}!', 'success')
         except Exception as e:
             flash(f'Error approving photo request {id}: {e}', 'danger')
-            db.session.rollback()
     else:
         flash(f'Photo request {id} cannot be approved (already approved/rejected or pending file missing).', 'warning')
 
@@ -166,19 +238,16 @@ def approve_photo(id):
 @admin_app.route('/reject/<int:id>')
 @login_required
 def reject_photo(id):
-    photo_request = PhotoRequest.query.get_or_404(id)
-    if photo_request.status == 'pending':
-        if photo_request.pending_path and os.path.exists(photo_request.pending_path):
+    photo_request = get_photo_request(id)
+    if photo_request and photo_request['status'] == 'pending':
+        if photo_request['pending_path'] and os.path.exists(photo_request['pending_path']):
             try:
-                os.remove(photo_request.pending_path)
+                os.remove(photo_request['pending_path'])
                 flash(f'Pending file for request {id} deleted.', 'info')
             except Exception as e:
                 flash(f'Error deleting pending file for request {id}: {e}', 'danger')
 
-        photo_request.status = 'rejected'
-        photo_request.approval_date = datetime.now()
-        photo_request.pending_path = None
-        db.session.commit()
+        update_photo_request_rejected(id)
         flash(f'Photo request {id} rejected.', 'success')
     else:
         flash(f'Photo request {id} cannot be rejected (already approved/rejected).', 'warning')
@@ -237,15 +306,7 @@ def submit_photo():
 
             try:
                 file.save(file_path)
-                new_request = PhotoRequest(
-                    user_name=user_name,
-                    description=description,
-                    filename=filename_secured,
-                    pending_path=file_path,
-                    status='pending'
-                )
-                db.session.add(new_request)
-                db.session.commit()
+                create_photo_request(user_name, description, filename_secured, file_path)
                 flash('Your photo request has been submitted successfully! We will review it soon.', 'success')
                 return redirect(url_for('submit_photo'))
             except Exception as e:
@@ -264,23 +325,20 @@ def admin_home():
 # --- Main Run Block ---
 if __name__ == '__main__':
     with admin_app.app_context():
-        db.create_all()
+        # Create tables if they don't exist
+        create_tables()
 
         # Create a default admin user if none exists
-        if not User.query.filter_by(username='admin').first():
-            admin_user = User(username='admin')
-            admin_user.set_password('adminpass')
-            db.session.add(admin_user)
-            db.session.commit()
+        if not get_user_by_username('admin'):
+            create_user('admin', 'adminpass')
             print("\nDefault admin user 'admin' created with password 'adminpass'.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
 
         # Add a default announcement if none exists
-        if not Announcement.query.first():
-            default_announcement = Announcement(
-                text="Welcome to the Admin Dashboard! Please update this announcement through the 'Announcements' section."
+        if not query_db('SELECT * FROM announcements LIMIT 1'):
+            insert_db(
+                'INSERT INTO announcements (text) VALUES (?)',
+                ["Welcome to the Admin Dashboard! Please update this announcement through the 'Announcements' section."]
             )
-            db.session.add(default_announcement)
-            db.session.commit()
             print("Default announcement added for admin app.", flush=True)
 
     print("Running Admin Flask development server on port 5001...", flush=True)
