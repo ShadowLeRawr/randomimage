@@ -142,7 +142,7 @@
     const artistInfoElement = document.getElementById('artistInfo');
     const similarityInfoElement = document.getElementById('similarityInfo');
 
-    // Function to load just the image
+    // Function to load the image first, then fetch source info asynchronously
     const fetchRandomImage = () => {
         // Reset the image and show loading state
         randomImageElement.src = '';
@@ -151,7 +151,8 @@
         // Reset source info to show it's loading
         sourceInfoDiv.innerHTML = '<p>Source Information:</p><p>Loading source information... <div class="loading"></div></p>';
         
-        fetch('/random-image-with-source')
+        // First, fetch just the random image (fast response)
+        fetch('/random-image')
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(err => { 
@@ -166,8 +167,8 @@
                     randomImageElement.src = data.imageUrl;
                     randomImageElement.alt = 'Random Image';
                     
-                    // Then process source information asynchronously
-                    processSourceInfo(data.source_results);
+                    // Then fetch source information asynchronously
+                    fetchSourceInfo(data.filename);
                 } else {
                     sourceInfoDiv.innerHTML = `<p style="color: red;">Error: No image URL received: ${data.error || 'Unknown error'}</p>`;
                 }
@@ -177,7 +178,27 @@
             });
     };
 
-    // Function to process source information separately
+    // Function to fetch source information separately
+    const fetchSourceInfo = (filename) => {
+        fetch(`/image-source/${filename}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { 
+                        throw new Error(`HTTP error! status: ${response.status}, Message: ${err.error || response.statusText}`); 
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                processSourceInfo(data.source_results);
+            })
+            .catch(error => {
+                sourceInfoDiv.innerHTML = '<p>Source Information:</p><p style="color: red;">Error fetching source information. The image is still available.</p>';
+                console.error('Error fetching source info:', error);
+            });
+    };
+
+    // Function to process source information
     const processSourceInfo = (sourceResults) => {
         // Clear previous source info
         sourceLinkElement.innerHTML = '';

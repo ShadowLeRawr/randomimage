@@ -205,17 +205,14 @@ def serve_image(filename):
     except FileNotFoundError:
         return jsonify({"error": "Image not found."}), 404
 
-# Endpoint to get a random image and its SauceNao source information
-@app.route('/random-image-with-source')
-def get_random_image_and_source():
-    # Initialize response outside the try block so it's accessible in except blocks
-    response = None
+# Endpoint to get just a random image URL (fast response)
+@app.route('/random-image')
+def get_random_image():
     try:
         # Check if the directory exists
         if not os.path.exists(IMAGES_FOLDER_INTERNAL):
-             # Log the error for debugging
-             print(f"Images folder not found at expected path: {IMAGES_FOLDER_INTERNAL}", flush=True)
-             return jsonify({"error": f"Images folder not found on the server."}), 500
+            print(f"Images folder not found at expected path: {IMAGES_FOLDER_INTERNAL}", flush=True)
+            return jsonify({"error": f"Images folder not found on the server."}), 500
 
         # Get a list of all files and directories in the images folder
         files = os.listdir(IMAGES_FOLDER_INTERNAL)
@@ -224,121 +221,162 @@ def get_random_image_and_source():
         image_files = [f for f in files if os.path.isfile(os.path.join(IMAGES_FOLDER_INTERNAL, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
 
         if not image_files:
-            # Log if no images are found
             print(f"No image files found in {IMAGES_FOLDER_INTERNAL}", flush=True)
             return jsonify({"error": "No images found in the folder."}), 404
 
         # Select a random image file
         random_image_file = random.choice(image_files)
-        image_full_path = os.path.join(IMAGES_FOLDER_INTERNAL, random_image_file)
-
+        
         # Add a random cachebuster to the URL to prevent browser caching of the image itself.
-        cachebuster = random.randint(100000, 999999) # Generate a random number
-        image_url = f'/images/{random_image_file}?cb={cachebuster}' # Append as a query parameter
+        cachebuster = random.randint(100000, 999999)
+        image_url = f'/images/{random_image_file}?cb={cachebuster}'
+        
+        # Return just the image URL and filename for quick response
+        return jsonify({
+            "imageUrl": image_url,
+            "filename": random_image_file
+        })
 
+    except Exception as e:
+        print(f"An unexpected error occurred in get_random_image: {e}", flush=True)
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+
+# Endpoint to get source information for a specific image
+@app.route('/image-source/<filename>')
+def get_image_source(filename):
+    # Initialize response outside the try block so it's accessible in except blocks
+    response = None
+    try:
+        image_full_path = os.path.join(IMAGES_FOLDER_INTERNAL, filename)
+        
+        # Check if the image exists
+        if not os.path.exists(image_full_path):
+            return jsonify({"error": "Image not found."}), 404
+            
         # --- Perform SauceNao Lookup ---
         saucenao_results = []
         try:
-            # Ensure the image file actually exists before trying to open it
-            if os.path.exists(image_full_path):
-                with open(image_full_path, 'rb') as img_file:
-                    # Prepare data for the SauceNao API request
-                    # Send the image file bytes directly
-                    files_payload = {'file': img_file}
-                    data_payload = {
-                        'api_key': SAUCENAO_API_KEY,
-                        'output_type': 2, # 2 for JSON output
-                        'db': [5, 34] # Add this to search all databases
-                    }
+            with open(image_full_path, 'rb') as img_file:
+                # Prepare data for the SauceNao API request
+                files_payload = {'file': img_file}
+                data_payload = {
+                    'api_key': SAUCENAO_API_KEY,
+                    'output_type': 2, # 2 for JSON output
+                    'db': [5, 34] # Add this to search all databases
+                }
 
-                    # Make the POST request to the SauceNao API
-                    response = requests.post(SAUCENAO_API_URL, data=data_payload, files=files_payload)
-                    # Log the status code before potentially raising an exception
-                    print(f"SauceNao API response status code: {response.status_code}", flush=True)
-                    response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
-                    print("SauceNao API request successful (HTTP 2xx).", flush=True)
+                # Make the POST request to the SauceNao API
+                response = requests.post(SAUCENAO_API_URL, data=data_payload, files=files_payload)
+                print(f"SauceNao API response status code: {response.status_code}", flush=True)
+                response.raise_for_status()
+                print("SauceNao API request successful (HTTP 2xx).", flush=True)
 
-                    # Attempt to decode JSON - this is where the JSONDecodeError happens
-                    saucenao_response_data = response.json()
-                    print("SauceNao API response JSON (if successful):", saucenao_response_data, flush=True)
+                # Attempt to decode JSON
+                saucenao_response_data = response.json()
+                print("SauceNao API response JSON (if successful):", saucenao_response_data, flush=True)
 
-                    # Process the results
-                    if saucenao_response_data and 'results' in saucenao_response_data:
-                        # Filter for results with a reasonable similarity score
-                        min_similarity = 70 # You can adjust this threshold (0 to 100)
-                        filtered_results = [
-                            r for r in saucenao_response_data['results']
-                            if r.get('header', {}).get('similarity') is not None and float(r['header']['similarity']) >= min_similarity
-                        ]
+                # Process the results
+                if saucenao_response_data and 'results' in saucenao_response_data:
+                    # Filter for results with a reasonable similarity score
+                    min_similarity = 70 # You can adjust this threshold (0 to 100)
+                    filtered_results = [
+                        r for r in saucenao_response_data['results']
+                        if r.get('header', {}).get('similarity') is not None and float(r['header']['similarity']) >= min_similarity
+                    ]
 
-                        # Sort results by similarity descending
-                        sorted_results = sorted(filtered_results, key=lambda x: float(x.get('header', {}).get('similarity', 0)), reverse=True)
+                    # Sort results by similarity descending
+                    sorted_results = sorted(filtered_results, key=lambda x: float(x.get('header', {}).get('similarity', 0)), reverse=True)
 
-                        for result in sorted_results:
-                            header = result.get('header', {})
-                            data = result.get('data', {})
+                    for result in sorted_results:
+                        header = result.get('header', {})
+                        data = result.get('data', {})
 
-                            similarity = header.get('similarity')
-                            # Try to find a source URL from external URLs, handle if list is empty
-                            source_url = 'N/A'
-                            if data.get('ext_urls'):
-                                # Prioritize certain sources if needed, or just take the first one
-                                source_url = data['ext_urls'][0] # Take the first URL in the list
+                        similarity = header.get('similarity')
+                        # Try to find a source URL from external URLs, handle if list is empty
+                        source_url = 'N/A'
+                        if data.get('ext_urls'):
+                            # Prioritize certain sources if needed, or just take the first one
+                            source_url = data['ext_urls'][0] # Take the first URL in the list
 
-                            # Try to find artist/creator information from various possible keys
-                            artist = data.get('creator') or data.get('artist') or data.get('author_name') or 'N/A'
-                            title = data.get('title') or data.get('source') or 'N/A' # Title might be in different keys
-                            thumbnail = header.get('thumbnail') # Thumbnail URL
+                        # Try to find artist/creator information from various possible keys
+                        artist = data.get('creator') or data.get('artist') or data.get('author_name') or 'N/A'
+                        title = data.get('title') or data.get('source') or 'N/A' # Title might be in different keys
+                        thumbnail = header.get('thumbnail') # Thumbnail URL
 
-                            saucenao_results.append({
-                                'similarity': similarity,
-                                'source_url': source_url,
-                                'artist': artist,
-                                'title': title,
-                                'thumbnail': thumbnail
-                            })
-                    elif saucenao_response_data and 'results' not in saucenao_response_data:
-                         # SauceNao returned JSON, but it doesn't have a 'results' key.
-                         print(f"SauceNao JSON response missing 'results' key (response data): {saucenao_response_data}", flush=True)
-                    else:
-                        # This case might happen if the response.json() was successful but returned None or an empty structure
-                        print("SauceNao API response JSON is empty or invalid (after successful request and JSON decode).", flush=True)
+                        saucenao_results.append({
+                            'similarity': similarity,
+                            'source_url': source_url,
+                            'artist': artist,
+                            'title': title,
+                            'thumbnail': thumbnail
+                        })
+                elif saucenao_response_data and 'results' not in saucenao_response_data:
+                    print(f"SauceNao JSON response missing 'results' key (response data): {saucenao_response_data}", flush=True)
+                else:
+                    print("SauceNao API response JSON is empty or invalid (after successful request and JSON decode).", flush=True)
 
         except requests.exceptions.RequestException as e:
-            # This block handles HTTP errors (like 403, 429) caught by raise_for_status()
-            print(f"Requests error during SauceNao API request for {random_image_file}: {e}", flush=True)
-            # Attempt to log the response text if the request failed after getting a response
+            print(f"Requests error during SauceNao API request for {filename}: {e}", flush=True)
             if e.response is not None:
                 print(f"SauceNao error response status code (if available): {e.response.status_code}", flush=True)
                 print(f"SauceNao error response text (if available): {e.response.text}", flush=True)
-            # Continue without SauceNao results
         except json.JSONDecodeError:
-            # *** THIS BLOCK HANDLES JSON DECODING ERRORS ***
-            print(f"Error decoding JSON from SauceNao API response for {random_image_file}.", flush=True)
-            # Log the raw response text received from SauceNao that caused the error
+            print(f"Error decoding JSON from SauceNao API response for {filename}.", flush=True)
             if 'response' in locals() and response is not None:
                 print(f"Raw SauceNao response text that caused JSONDecodeError: {response.text}", flush=True)
-            # Continue without SauceNao results
-        except FileNotFoundError:
-             # Handles the case where the image file selected randomly somehow doesn't exist when trying to open it
-             print(f"Image file not found locally for SauceNao lookup: {image_full_path}", flush=True)
-             # Continue without SauceNao results
         except Exception as e:
-            # Handles any other unexpected errors during the lookup process
-            print(f"An unexpected error occurred during SauceNao lookup for {random_image_file}: {e}", flush=True)
-             # Continue without SauceNao results
+            print(f"An unexpected error occurred during SauceNao lookup for {filename}: {e}", flush=True)
 
-        # Return both the image URL (with cachebuster) and filtered SauceNao results
-        # Even if SauceNao lookup fails, we return the image URL
-        return jsonify({"imageUrl": image_url, "source_results": saucenao_results})
+        # Return the source information
+        return jsonify({"source_results": saucenao_results})
 
-    except FileNotFoundError:
-        # This specific FileNotFoundError is for the initial images folder check
-        return jsonify({"error": f"Images folder not found on the server."}), 500 # Return a server error to the client
     except Exception as e:
-        # Log any other unexpected errors in the main route logic
+        print(f"An unexpected error occurred in get_image_source: {e}", flush=True)
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+
+# Keep the original endpoint for backward compatibility
+@app.route('/random-image-with-source')
+def get_random_image_and_source():
+    try:
+        # Get a random image first
+        image_response = get_random_image()
+        
+        # If there was an error getting the random image, return that error
+        if image_response.status_code != 200:
+            return image_response
+            
+        # Extract the image data from the response
+        image_data = json.loads(image_response.get_data(as_text=True))
+        
+        if 'error' in image_data:
+            return jsonify(image_data), 500
+            
+        # Get the filename from the image URL
+        filename = image_data.get('filename')
+        
+        # Get the source information for this image
+        source_response = get_image_source(filename)
+        
+        # If there was an error getting the source information, still return the image
+        # but with empty source results
+        if source_response.status_code != 200:
+            return jsonify({
+                "imageUrl": image_data.get('imageUrl'),
+                "source_results": []
+            })
+            
+        # Extract the source data from the response
+        source_data = json.loads(source_response.get_data(as_text=True))
+        
+        # Combine the image URL and source results
+        return jsonify({
+            "imageUrl": image_data.get('imageUrl'),
+            "source_results": source_data.get('source_results', [])
+        })
+        
+    except Exception as e:
         print(f"An unexpected error occurred in get_random_image_and_source: {e}", flush=True)
-        return jsonify({"error": f"An internal server error occurred: {e}"}), 500 # Return a server error to the client
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
 
 # --- Admin Routes ---
 
