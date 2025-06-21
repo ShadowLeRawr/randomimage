@@ -10,7 +10,7 @@ import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-app = Flask(__name__, template_folder='.')
+app = Flask(__name__)
 
 # Secret key for session management
 app.config['SECRET_KEY'] = 'super_secret_key_for_app'
@@ -195,7 +195,7 @@ def before_request():
 # Serve the main HTML page
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('templates/index.html')
 
 # Serve images
 @app.route('/images/<filename>')
