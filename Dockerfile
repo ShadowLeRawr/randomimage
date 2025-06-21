@@ -20,6 +20,11 @@ COPY app.py .
 COPY templates/ ./templates/
 COPY admin_templates/ ./admin_templates/
 
+# Set up template directories for Flask to find them
+RUN mkdir -p /app/templates
+RUN ln -sf /app/templates/index.html /app/index.html
+RUN ln -sf /app/admin_templates /app/templates/admin_templates
+
 # Copy existing images to data directory if they exist
 COPY images/ ./data/images/
 
