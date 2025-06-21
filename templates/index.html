@@ -12,15 +12,15 @@
       justify-content: center;
       min-height: 100vh;
       margin: 0;
-      background-color: #1a1a1a; /* Dark background */
-      color: #f0f0f0; /* Light text color */
+      background-color: #111111; /* Dark background */
+      color: #509E3F; /* Green text color */
       padding: 20px; /* Add some padding for spacing */
       padding-bottom: 40px; /* Add padding to the bottom */
       box-sizing: border-box; /* Include padding in element's total width and height */
     }
 
     h1 {
-        color: #ffffff; /* White heading */
+        color: #509E3F; /* Green heading */
         margin-bottom: 20px;
     }
 
@@ -29,7 +29,7 @@
       max-height: 70vh;
       height: auto; /* Maintain aspect ratio */
       margin-bottom: 20px;
-      border: 1px solid #555; /* Slightly lighter border */
+      border: 1px solid #509E3F; /* Green border */
       box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5); /* More prominent shadow */
       display: block; /* Prevent extra space below image */
     }
@@ -39,23 +39,24 @@
       font-size: 16px;
       cursor: pointer;
       margin-bottom: 20px;
-      background-color: #333; /* Dark button background */
-      color: #f0f0f0; /* Light button text */
-      border: 1px solid #555;
+      background-color: #509E3F; /* Green button background */
+      color: #111111; /* Dark button text */
+      border: none;
+      font-weight: bold;
       border-radius: 5px;
       transition: background-color 0.3s ease; /* Smooth transition on hover */
     }
 
     button:hover {
-        background-color: #555; /* Slightly lighter on hover */
+        background-color: #3c7830; /* Darker green on hover */
     }
 
     #sourceInfo {
         margin-top: 20px;
         padding: 15px;
-        border: 1px solid #555; /* Darker border */
-        background-color: #333; /* Dark background */
-        color: #f0f0f0; /* Light text */
+        border: 1px solid #509E3F; /* Green border */
+        background-color: #222; /* Dark background */
+        color: #509E3F; /* Green text */
         width: 100%; /* Occupy full width of container */
         max-width: 600px; /* Limit maximum width */
         text-align: left;
@@ -70,18 +71,19 @@
     }
 
     #sourceInfo a {
-        color: #9bb0f0; /* Lighter link color for dark mode */
+        color: #7cbe6c; /* Lighter green link color */
         text-decoration: none;
     }
 
     #sourceInfo a:hover {
         text-decoration: underline;
+        color: #a0e090; /* Even lighter green on hover */
     }
 
     /* Style for the Source Information title and labels */
     #sourceInfo p:first-child, /* Target the first paragraph (the title) */
     #sourceInfo strong {      /* Target the strong tags (the labels) */
-        color: #8fbc8f; /* Greenish color */
+        color: #509E3F; /* Match our green theme */
     }
 
 
