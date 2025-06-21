@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #444;
+        }
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+        }
+        .header .btn {
+            margin-left: 10px;
+        }
+        .card {
+            background-color: #333;
+            border: 1px solid #444;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .card-header {
+            background-color: #444;
+            color: #fff;
+            font-weight: bold;
+            border-bottom: 1px solid #555;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .photo-item {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .photo-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .photo-item-info {
+            flex-grow: 1;
+        }
+        .photo-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .photo-preview {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: contain;
+            margin-top: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+        .alert {
+            margin-bottom: 20px;
+        }
+        .btn-success, .btn-danger {
+            min-width: 100px;
+        }
+        .empty-message {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-style: italic;
+        }
+        .tab-content {
+            margin-top: 20px;
+        }
+        .nav-tabs {
+            border-bottom: 1px solid #444;
+        }
+        .nav-tabs .nav-link {
+            color: #ccc;
+            border: 1px solid transparent;
+        }
+        .nav-tabs .nav-link:hover {
+            border-color: #444 #444 #444;
+            color: #fff;
+        }
+        .nav-tabs .nav-link.active {
+            color: #fff;
+            background-color: #333;
+            border-color: #444 #444 #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>Admin Dashboard</h1>
+            <div>
+                <a href="{{ url_for('submit_photo') }}" class="btn btn-info">
+                    <i class="fas fa-upload"></i> Submit Photo
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link active" id="pending-tab" data-toggle="tab" href="#pending" role="tab" aria-controls="pending" aria-selected="true">
+                    Pending <span class="badge badge-warning">{{ pending_requests|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="approved-tab" data-toggle="tab" href="#approved" role="tab" aria-controls="approved" aria-selected="false">
+                    Approved <span class="badge badge-success">{{ approved_requests|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link" id="rejected-tab" data-toggle="tab" href="#rejected" role="tab" aria-controls="rejected" aria-selected="false">
+                    Rejected <span class="badge badge-danger">{{ rejected_requests|length }}</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <!-- Pending Photos Tab -->
+            <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+                <div class="card">
+                    <div class="card-header">
+                        Pending Photo Requests
+                    </div>
+                    <div class="card-body">
+                        {% if pending_requests %}
+                            {% for request in pending_requests %}
+                                <div class="photo-item">
+                                    <div class="photo-item-header">
+                                        <div class="photo-item-info">
+                                            <h5>{{ request.user_name }}</h5>
+                                            <p><strong>Filename:</strong> {{ request.filename }}</p>
+                                            <p><strong>Submitted:</strong> {{ request.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                            {% if request.description %}
+                                                <p><strong>Description:</strong> {{ request.description }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="photo-item-actions">
+                                            <a href="{{ url_for('approve_photo', id=request.id) }}" class="btn btn-success">
+                                                <i class="fas fa-check"></i> Approve
+                                            </a>
+                                            <a href="{{ url_for('reject_photo', id=request.id) }}" class="btn btn-danger">
+                                                <i class="fas fa-times"></i> Reject
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {% if request.pending_path %}
+                                        <img src="{{ url_for('serve_pending_image', filename=request.filename) }}" alt="Preview" class="photo-preview">
+                                    {% else %}
+                                        <p class="text-warning">Image file not found</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-message">No pending photo requests</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approved Photos Tab -->
+            <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
+                <div class="card">
+                    <div class="card-header">
+                        Approved Photos
+                    </div>
+                    <div class="card-body">
+                        {% if approved_requests %}
+                            {% for request in approved_requests %}
+                                <div class="photo-item">
+                                    <div class="photo-item-info">
+                                        <h5>{{ request.user_name }}</h5>
+                                        <p><strong>Filename:</strong> {{ request.filename }}</p>
+                                        <p><strong>Submitted:</strong> {{ request.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                        <p><strong>Approved:</strong> {{ request.approval_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                        {% if request.description %}
+                                            <p><strong>Description:</strong> {{ request.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                    {% if request.approved_path %}
+                                        <img src="{{ url_for('serve_approved_image', filename=request.filename) }}" alt="Preview" class="photo-preview">
+                                    {% else %}
+                                        <p class="text-warning">Image file not found</p>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-message">No approved photos</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rejected Photos Tab -->
+            <div class="tab-pane fade" id="rejected" role="tabpanel" aria-labelledby="rejected-tab">
+                <div class="card">
+                    <div class="card-header">
+                        Rejected Photos
+                    </div>
+                    <div class="card-body">
+                        {% if rejected_requests %}
+                            {% for request in rejected_requests %}
+                                <div class="photo-item">
+                                    <div class="photo-item-info">
+                                        <h5>{{ request.user_name }}</h5>
+                                        <p><strong>Filename:</strong> {{ request.filename }}</p>
+                                        <p><strong>Submitted:</strong> {{ request.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                        <p><strong>Rejected:</strong> {{ request.approval_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                        {% if request.description %}
+                                            <p><strong>Description:</strong> {{ request.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-message">No rejected photos</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

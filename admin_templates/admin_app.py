@@ -2,47 +2,37 @@ import os
 import shutil # For moving files
 from datetime import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_admin import Admin, BaseView, expose
-from flask_admin.contrib.sqla import ModelView
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 # --- Flask App Configuration ---
-# IMPORTANT: template_folder='admin_templates' tells this Flask app to look for templates here
-admin_app = Flask(__name__, template_folder='admin_templates')
+admin_app = Flask(__name__, template_folder='.')
 
 # IMPORTANT: Change this to a strong, random key in production!
-# You can generate one using: os.urandom(24).hex()
-admin_app.config['SECRET_KEY'] = 'another_super_secret_key_for_admin_app' # MUST BE DIFFERENT FROM YOUR MAIN APP
+admin_app.config['SECRET_KEY'] = 'another_super_secret_key_for_admin_app'
 
 # Database configuration (using SQLite for simplicity)
-admin_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db' # This DB will be created in your project root
-admin_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Suppress a warning
+admin_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+admin_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- File Upload Configuration ---
 # Define the folders for pending and approved images
-# os.path.abspath(os.path.dirname(__file__)) gets the directory of the current script (admin_app.py)
 admin_app.config['UPLOAD_FOLDER'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'pending_uploads')
-# This points to the 'images' folder in your main project root, where approved images will go
-admin_app.config['APPROVED_IMAGES_FOLDER'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'images')
+# This points to the 'images' folder in your main project root
+admin_app.config['APPROVED_IMAGES_FOLDER'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'images')
 admin_app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 Megabytes limit for file uploads
 
 # Ensure these directories exist when the app starts
 os.makedirs(admin_app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(admin_app.config['APPROVED_IMAGES_FOLDER'], exist_ok=True) # Ensure 'images' also exists, though your main app might create it
+os.makedirs(admin_app.config['APPROVED_IMAGES_FOLDER'], exist_ok=True)
 
 # --- Database Initialization ---
 db = SQLAlchemy(admin_app)
 
-# --- Flask-Login Setup ---
-login_manager = LoginManager()
-login_manager.init_app(admin_app)
-login_manager.login_view = 'login' # Define the login route
-
-class User(db.Model, UserMixin):
+# --- Define Database Models ---
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
@@ -56,11 +46,6 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f'<User {self.username}>'
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-# --- Define Database Models ---
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
@@ -84,180 +69,152 @@ class PhotoRequest(db.Model):
     def __repr__(self):
         return f"PhotoRequest('{self.user_name}', '{self.filename}', '{self.status}')"
 
-# --- Flask-Admin Custom Views ---
-class AuthenticatedModelView(ModelView):
-    # Ensures only logged-in users can access this view
-    def is_accessible(self):
-        return current_user.is_authenticated
+# --- Helper Functions ---
+def is_logged_in():
+    return session.get('logged_in', False)
 
-    def inaccessible_callback(self, name, **kwargs):
-        # Redirect to login page if user is not authenticated
-        return redirect(url_for('login', next=request.url))
+def login_required(f):
+    def decorated_function(*args, **kwargs):
+        if not is_logged_in():
+            flash('Please log in to access this page.', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
 
-class PhotoRequestAdminView(AuthenticatedModelView):
-    # Custom formatter for displaying image previews in the list
-    def _list_thumbnail_formatter(view, context, model, name):
-        if model.filename and (model.status == 'pending' or model.status == 'approved'):
-            if model.status == 'pending' and model.pending_path:
-                # Link to the route that serves pending images from admin_app
-                return f'<img src="{url_for("serve_pending_image", filename=os.path.basename(model.pending_path))}" style="max-width:100px; max-height:100px; object-fit: cover;">'
-            elif model.status == 'approved' and model.approved_path:
-                # Link to the main app's image serving route (assuming Nginx handles this in production)
-                # For development, 'main_app_serve_image' is a placeholder route in this admin_app
-                return f'<img src="{url_for("main_app_serve_image", filename=os.path.basename(model.approved_path))}" style="max-width:100px; max-height:100px; object-fit: cover;">'
-        return ''
+# --- Flask Routes ---
 
-    # Define how columns appear in the list view
-    column_list = ('id', 'user_name', 'description', 'filename', 'Image Preview', 'status', 'submission_date', 'approval_date')
-    column_default_sort = ('submission_date', True) # Sort by newest first
-    column_labels = dict(user_name='User', description='Description') # Nicer labels
-    column_formatters = {
-        'Image Preview': _list_thumbnail_formatter # Apply the formatter to the 'Image Preview' column
-    }
+# Login Page
+@admin_app.route('/login', methods=['GET', 'POST'])
+def login():
+    if is_logged_in():
+        return redirect(url_for('admin_dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            session['logged_in'] = True
+            session['username'] = username
+            flash('Logged in successfully.', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid username or password.', 'danger')
+    
+    return render_template('login.html')
 
-    # Exclude certain fields from the create/edit form in the admin (they are managed automatically)
-    form_excluded_columns = ['filename', 'pending_path', 'approved_path', 'submission_date', 'approval_date']
-    can_create = False # Photo requests are created by users via the public form
-    can_delete = True  # Admin can delete requests
+# Logout Route
+@admin_app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    session.pop('username', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
 
-    # Custom actions (Approve/Reject buttons)
-    @expose('/approve/<int:id>', methods=('GET',))
-    @login_required
-    def approve_photo(self, id):
-        photo_request = PhotoRequest.query.get_or_404(id)
-        if photo_request.status == 'pending' and photo_request.pending_path and os.path.exists(photo_request.pending_path):
-            approved_filename = photo_request.filename
+# Admin Dashboard
+@admin_app.route('/admin')
+@login_required
+def admin_dashboard():
+    # Get pending photo requests
+    pending_requests = PhotoRequest.query.filter_by(status='pending').order_by(PhotoRequest.submission_date.desc()).all()
+    # Get approved photo requests
+    approved_requests = PhotoRequest.query.filter_by(status='approved').order_by(PhotoRequest.approval_date.desc()).all()
+    # Get rejected photo requests
+    rejected_requests = PhotoRequest.query.filter_by(status='rejected').order_by(PhotoRequest.approval_date.desc()).all()
+    
+    return render_template('admin_dashboard.html', 
+                          pending_requests=pending_requests, 
+                          approved_requests=approved_requests, 
+                          rejected_requests=rejected_requests)
+
+# Approve Photo
+@admin_app.route('/approve/<int:id>')
+@login_required
+def approve_photo(id):
+    photo_request = PhotoRequest.query.get_or_404(id)
+    if photo_request.status == 'pending' and photo_request.pending_path and os.path.exists(photo_request.pending_path):
+        approved_filename = photo_request.filename
+        destination_path = os.path.join(admin_app.config['APPROVED_IMAGES_FOLDER'], approved_filename)
+
+        # Handle potential filename collisions
+        counter = 1
+        original_filename_no_ext, file_extension = os.path.splitext(approved_filename)
+        while os.path.exists(destination_path):
+            approved_filename = f"{original_filename_no_ext}_{counter}{file_extension}"
             destination_path = os.path.join(admin_app.config['APPROVED_IMAGES_FOLDER'], approved_filename)
+            counter += 1
 
-            # Handle potential filename collisions
-            counter = 1
-            original_filename_no_ext, file_extension = os.path.splitext(approved_filename)
-            while os.path.exists(destination_path):
-                approved_filename = f"{original_filename_no_ext}_{counter}{file_extension}"
-                destination_path = os.path.join(admin_app.config['APPROVED_IMAGES_FOLDER'], approved_filename)
-                counter += 1
-
-            try:
-                shutil.move(photo_request.pending_path, destination_path)
-                photo_request.status = 'approved'
-                photo_request.approved_path = destination_path # Store full path to approved image
-                photo_request.filename = approved_filename # Update filename if it was changed due to collision
-                photo_request.approval_date = datetime.now()
-                db.session.commit()
-                flash(f'Photo request {id} approved and moved to images folder as {approved_filename}!', 'success')
-            except Exception as e:
-                flash(f'Error approving photo request {id}: {e}', 'danger')
-                db.session.rollback()
-        else:
-            flash(f'Photo request {id} cannot be approved (already approved/rejected or pending file missing).', 'warning')
-
-        return redirect(url_for('photorequest.index_view'))
-
-    @expose('/reject/<int:id>', methods=('GET',))
-    @login_required
-    def reject_photo(self, id):
-        photo_request = PhotoRequest.query.get_or_404(id)
-        if photo_request.status == 'pending':
-            if photo_request.pending_path and os.path.exists(photo_request.pending_path):
-                try:
-                    os.remove(photo_request.pending_path)
-                    flash(f'Pending file for request {id} deleted.', 'info')
-                except Exception as e:
-                    flash(f'Error deleting pending file for request {id}: {e}', 'danger')
-
-            photo_request.status = 'rejected'
+        try:
+            shutil.move(photo_request.pending_path, destination_path)
+            photo_request.status = 'approved'
+            photo_request.approved_path = destination_path
+            photo_request.filename = approved_filename
             photo_request.approval_date = datetime.now()
-            photo_request.pending_path = None # Clear pending path as file is gone
             db.session.commit()
-            flash(f'Photo request {id} rejected.', 'success')
-        else:
-            flash(f'Photo request {id} cannot be rejected (already approved/rejected).', 'warning')
+            flash(f'Photo request {id} approved and moved to images folder as {approved_filename}!', 'success')
+        except Exception as e:
+            flash(f'Error approving photo request {id}: {e}', 'danger')
+            db.session.rollback()
+    else:
+        flash(f'Photo request {id} cannot be approved (already approved/rejected or pending file missing).', 'warning')
 
-        return redirect(url_for('photorequest.index_view'))
+    return redirect(url_for('admin_dashboard'))
 
-    # Add custom action buttons to each row in the list view
-    column_extra_actions = [
-        # Button for approving pending requests
-        {'title': 'Approve', 'url': 'photorequest.approve_photo', 'icon': 'fa-check', 'class': 'btn btn-sm btn-success', 'condition': lambda model: model.status == 'pending'},
-        # Button for rejecting pending requests
-        {'title': 'Reject', 'url': 'photorequest.reject_photo', 'icon': 'fa-times', 'class': 'btn btn-sm btn-danger', 'condition': lambda model: model.status == 'pending'},
-    ]
+# Reject Photo
+@admin_app.route('/reject/<int:id>')
+@login_required
+def reject_photo(id):
+    photo_request = PhotoRequest.query.get_or_404(id)
+    if photo_request.status == 'pending':
+        if photo_request.pending_path and os.path.exists(photo_request.pending_path):
+            try:
+                os.remove(photo_request.pending_path)
+                flash(f'Pending file for request {id} deleted.', 'info')
+            except Exception as e:
+                flash(f'Error deleting pending file for request {id}: {e}', 'danger')
 
-# Initialize Flask-Admin with the admin_app
-admin = Admin(admin_app, name='Admin Dashboard', template_mode='bootstrap3', url='/admin') # Dashboard will be at /admin
+        photo_request.status = 'rejected'
+        photo_request.approval_date = datetime.now()
+        photo_request.pending_path = None
+        db.session.commit()
+        flash(f'Photo request {id} rejected.', 'success')
+    else:
+        flash(f'Photo request {id} cannot be rejected (already approved/rejected).', 'warning')
 
-# Add views to the admin dashboard
-admin.add_view(AuthenticatedModelView(Announcement, db.session, category='Content', name='Announcements'))
-admin.add_view(PhotoRequestAdminView(PhotoRequest, db.session, category='Content', name='Photo Requests'))
-admin.add_view(AuthenticatedModelView(User, db.session, category='Administration', name='Users'))
+    return redirect(url_for('admin_dashboard'))
 
-# --- Flask Routes for admin_app ---
-
-# Route to serve approved images for preview within the admin dashboard
-# This acts as a proxy for your main app's /images route for the admin's view
-@admin_app.route('/images/<path:filename>') # Use path converter for filenames with slashes (though unlikely for images)
-def main_app_serve_image(filename):
-    try:
-        # Serves from the same 'images' directory that your main app uses
-        return send_from_directory(admin_app.config['APPROVED_IMAGES_FOLDER'], filename)
-    except FileNotFoundError:
-        return "Approved image not found for preview.", 404
-
-# Route to serve pending images for preview within the admin dashboard
+# Serve Pending Image
 @admin_app.route('/pending_uploads/<path:filename>')
+@login_required
 def serve_pending_image(filename):
     try:
         return send_from_directory(admin_app.config['UPLOAD_FOLDER'], filename)
     except FileNotFoundError:
         return "Pending image not found for preview.", 404
 
-# Login Page
-@admin_app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        # If already logged in, redirect to the admin dashboard index
-        return redirect(url_for('admin.index'))
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in successfully.', 'success')
-            next_page = request.args.get('next') # Redirect to the page user was trying to access
-            return redirect(next_page or url_for('admin.index'))
-        else:
-            flash('Invalid username or password.', 'danger')
-    return render_template('login.html')
+# Serve Approved Image
+@admin_app.route('/images/<path:filename>')
+def serve_approved_image(filename):
+    try:
+        return send_from_directory(admin_app.config['APPROVED_IMAGES_FOLDER'], filename)
+    except FileNotFoundError:
+        return "Approved image not found for preview.", 404
 
-# Logout Route
-@admin_app.route('/logout')
-@login_required # Requires login to access
-def logout():
-    logout_user()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('login')) # Redirect to login page after logout
-
-# Default route for the admin_app (simple home page)
-@admin_app.route('/')
-def admin_home():
-    return render_template('admin_home.html')
-
-# Photo Submission Route (publicly accessible)
+# Photo Submission Form
 @admin_app.route('/submit_photo', methods=['GET', 'POST'])
 def submit_photo():
     if request.method == 'POST':
         user_name = request.form.get('user_name', 'Anonymous')
         description = request.form.get('description', '').strip()
 
-        # Check if a file was sent as part of the request
         if 'photo_file' not in request.files:
             flash('No file part in the request.', 'danger')
             return redirect(url_for('submit_photo'))
 
         file = request.files['photo_file']
 
-        # If the user selected the file input but didn't choose a file
         if file.filename == '':
             flash('No file selected.', 'warning')
             return redirect(url_for('submit_photo'))
@@ -279,12 +236,12 @@ def submit_photo():
                 counter += 1
 
             try:
-                file.save(file_path) # Save the uploaded file
+                file.save(file_path)
                 new_request = PhotoRequest(
                     user_name=user_name,
                     description=description,
-                    filename=filename_secured, # Store the actual filename used on disk
-                    pending_path=file_path, # Store the full path in pending folder
+                    filename=filename_secured,
+                    pending_path=file_path,
                     status='pending'
                 )
                 db.session.add(new_request)
@@ -299,26 +256,25 @@ def submit_photo():
 
     return render_template('submit_photo.html')
 
-# Context processor to make datetime.utcnow available in templates for date formatting
-@admin_app.context_processor
-def inject_now():
-    return {'now': datetime.utcnow}
+# Home Page
+@admin_app.route('/')
+def admin_home():
+    return render_template('admin_home.html')
 
-
-# --- Main Run Block for admin_app ---
+# --- Main Run Block ---
 if __name__ == '__main__':
     with admin_app.app_context():
-        db.create_all() # Create all tables defined in models if they don't exist
+        db.create_all()
 
         # Create a default admin user if none exists
         if not User.query.filter_by(username='admin').first():
             admin_user = User(username='admin')
-            admin_user.set_password('adminpass') # !!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!
+            admin_user.set_password('adminpass')
             db.session.add(admin_user)
             db.session.commit()
             print("\nDefault admin user 'admin' created with password 'adminpass'.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
 
-        # Add a default announcement if none exists (for the admin app's announcement section)
+        # Add a default announcement if none exists
         if not Announcement.query.first():
             default_announcement = Announcement(
                 text="Welcome to the Admin Dashboard! Please update this announcement through the 'Announcements' section."
@@ -328,4 +284,4 @@ if __name__ == '__main__':
             print("Default announcement added for admin app.", flush=True)
 
     print("Running Admin Flask development server on port 5001...", flush=True)
-    admin_app.run(debug=True, port=5001) # Runs on a different port (5001) than your main app (5000)
+    admin_app.run(debug=True, port=5001)
