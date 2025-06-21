@@ -1,53 +1,22 @@
 version: '3.8'
 
 services:
-  main-app:
+  app:
     build: .
     container_name: random-image-app
     restart: unless-stopped
     ports:
       - "5000:5000"
     volumes:
-      - ./images:/app/images
-      - ./my_random_images:/app/my_random_images
+      - ./data:/app/data
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=production
       - SAUCENAO_API_KEY=${SAUCENAO_API_KEY:-APIKEYHERE}
-    command: gunicorn --bind 0.0.0.0:5000 app:app
-
-  admin-app:
-    build: .
-    container_name: random-image-admin
-    restart: unless-stopped
-    ports:
-      - "5001:5001"
-    volumes:
-      - ./images:/app/images
-      - ./admin_templates:/app/admin_templates
-      - ./admin_templates/pending_uploads:/app/admin_templates/pending_uploads
-      - sqlite-data:/app
-    environment:
-      - FLASK_APP=admin_templates/admin_app.py
-      - FLASK_ENV=production
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-adminpass}
-    command: gunicorn --bind 0.0.0.0:5001 admin_templates.admin_app:admin_app
-
-  nginx:
-    image: nginx:alpine
-    container_name: random-image-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
-      - ./images:/usr/share/nginx/html/images
-    depends_on:
-      - main-app
-      - admin-app
+    command: gunicorn --bind 0.0.0.0:5000 app:app
 
 volumes:
-  sqlite-data:
+  data:
+    driver: local

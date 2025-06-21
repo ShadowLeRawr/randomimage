@@ -15,12 +15,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Create data directory structure
+RUN mkdir -p /app/data/images /app/data/pending_images /app/data/sqlite
+
 # Set environment variables
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
 
-# Expose ports for the main app and admin app
-EXPOSE 5000 5001
+# Expose port for the app
+EXPOSE 5000
 
 # Command to run the application
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]

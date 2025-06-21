@@ -19,16 +19,15 @@ A web application that displays random images with source information, featuring
 
 ```
 .
-├── app.py                  # Main Flask application
-├── admin_templates/        # Admin application files
-│   └── admin_app.py        # Admin Flask application
-├── images/                 # Approved images storage
-├── my_random_images/       # Additional image storage
+├── app.py                  # Main Flask application with integrated admin functionality
+├── data/                   # Data directory
+│   ├── images/             # Approved images storage
+│   ├── pending_images/     # Pending image uploads
+│   └── sqlite/             # SQLite database storage
+├── admin_templates/        # Admin templates
 ├── templates/              # HTML templates
 │   ├── admin.html          # Admin interface template
 │   └── index.html          # Main site template
-├── nginx/                  # Nginx configuration
-│   └── conf.d/             # Nginx site configurations
 ├── Dockerfile              # Docker image definition
 ├── docker-compose.yaml     # Docker Compose configuration
 └── requirements.txt        # Python dependencies
@@ -62,9 +61,9 @@ A web application that displays random images with source information, featuring
    ```
 
 4. Access the application:
-   - Main site: http://localhost
-   - Admin panel: http://localhost/admin
-   - Photo submission: http://localhost/submit_photo
+   - Main site: http://localhost:5000
+   - Admin panel: http://localhost:5000/admin
+   - Photo submission: http://localhost:5000/submit_photo
 
 ## Live Demo
 
@@ -74,11 +73,7 @@ A live demo of the application is hosted at:
 
 ## Docker Configuration
 
-The application is containerized using Docker with three services:
-
-1. **main-app**: The primary Flask application serving random images
-2. **admin-app**: The admin panel for content management
-3. **nginx**: Web server that handles routing and serves static files
+The application is containerized using Docker with a single service that handles both the main application and admin functionality. The application is designed to run behind a reverse proxy.
 
 ## Development
 
@@ -89,15 +84,9 @@ The application is containerized using Docker with three services:
    pip install -r requirements.txt
    ```
 
-2. Run the main application:
+2. Run the application:
    ```
    python app.py
-   ```
-
-3. Run the admin application (in a separate terminal):
-   ```
-   cd admin_templates
-   python admin_app.py
    ```
 
 ### Default Admin Credentials
@@ -111,10 +100,7 @@ The application is containerized using Docker with three services:
 
 For production deployment:
 
-1. Update the Nginx configuration in `nginx/conf.d/default.conf`:
-   - Set the appropriate `server_name`
-   - Uncomment and configure the HTTPS server block
-   - Add SSL certificates to `nginx/ssl/`
+1. Configure your reverse proxy to forward requests to the application container.
 
 2. Modify the admin password:
    - Access the admin panel
@@ -123,8 +109,7 @@ For production deployment:
 
 3. Set proper permissions for data directories:
    ```
-   chmod -R 755 images
-   chmod -R 755 admin_templates/pending_uploads
+   chmod -R 755 data
    ```
 
 ## Security Considerations
