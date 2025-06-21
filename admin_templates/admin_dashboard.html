@@ -9,8 +9,8 @@
     <style>
         body {
             font-family: sans-serif;
-            background-color: #1a1a1a;
-            color: #f0f0f0;
+            background-color: #111111;
+            color: #509E3F;
             padding: 20px;
             box-sizing: border-box;
         }
@@ -24,34 +24,34 @@
             align-items: center;
             margin-bottom: 30px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid #509E3F;
         }
         .header h1 {
-            color: #ffffff;
+            color: #509E3F;
             margin: 0;
         }
         .header .btn {
             margin-left: 10px;
         }
         .card {
-            background-color: #333;
-            border: 1px solid #444;
+            background-color: #222;
+            border: 1px solid #509E3F;
             margin-bottom: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
         .card-header {
-            background-color: #444;
-            color: #fff;
+            background-color: #333;
+            color: #509E3F;
             font-weight: bold;
-            border-bottom: 1px solid #555;
+            border-bottom: 1px solid #509E3F;
         }
         .card-body {
             padding: 20px;
         }
         .photo-item {
-            background-color: #2a2a2a;
-            border: 1px solid #444;
+            background-color: #222;
+            border: 1px solid #509E3F;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 15px;
@@ -76,7 +76,7 @@
             max-height: 200px;
             object-fit: contain;
             margin-top: 10px;
-            border: 1px solid #555;
+            border: 1px solid #509E3F;
             border-radius: 5px;
         }
         .alert {
@@ -88,27 +88,27 @@
         .empty-message {
             text-align: center;
             padding: 20px;
-            color: #888;
+            color: #509E3F;
             font-style: italic;
         }
         .tab-content {
             margin-top: 20px;
         }
         .nav-tabs {
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid #509E3F;
         }
         .nav-tabs .nav-link {
-            color: #ccc;
+            color: #509E3F;
             border: 1px solid transparent;
         }
         .nav-tabs .nav-link:hover {
-            border-color: #444 #444 #444;
-            color: #fff;
+            border-color: #509E3F #509E3F #509E3F;
+            color: #509E3F;
         }
         .nav-tabs .nav-link.active {
-            color: #fff;
-            background-color: #333;
-            border-color: #444 #444 #333;
+            color: #509E3F;
+            background-color: #222;
+            border-color: #509E3F #509E3F #222;
         }
         
         /* Image Modal Styles */
@@ -138,7 +138,7 @@
             max-height: 90vh;
         }
         .modal-title {
-            color: white;
+            color: #509E3F;
             text-align: center;
             padding: 10px 0;
             font-size: 1.2rem;
@@ -147,7 +147,7 @@
             position: absolute;
             top: 15px;
             right: 35px;
-            color: #f1f1f1;
+            color: #509E3F;
             font-size: 40px;
             font-weight: bold;
             cursor: pointer;
@@ -226,7 +226,7 @@
                                     {% if request.pending_path %}
                                         <img src="{{ url_for('serve_pending_image', filename=request.filename) }}" alt="Preview" class="photo-preview clickable-image" data-image-url="{{ url_for('serve_pending_image', filename=request.filename) }}" data-image-title="{{ request.filename }}">
                                     {% else %}
-                                        <p class="text-warning">Image file not found</p>
+                                        <p style="color: #ff9800;">Image file not found</p>
                                     {% endif %}
                                 </div>
                             {% endfor %}

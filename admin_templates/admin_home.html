@@ -15,26 +15,27 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #1a1a1a;
-            color: #f0f0f0;
+            background-color: #111111;
+            color: #509E3F;
             padding: 20px;
             box-sizing: border-box;
         }
         .admin-card {
-            background-color: #333;
+            background-color: #222;
             padding: 40px;
             border-radius: 10px;
+            border: 1px solid #509E3F;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
             text-align: center;
             max-width: 600px;
             width: 100%;
         }
         h1 {
-            color: #ffffff;
+            color: #509E3F;
             margin-bottom: 30px;
         }
         p {
-            color: #ccc;
+            color: #509E3F;
             margin-bottom: 25px;
         }
         .btn-group-vertical > .btn {
@@ -47,33 +48,41 @@
             text-align: left;
         }
         .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
+            background-color: #509E3F;
+            border-color: #509E3F;
+            color: #111111;
+            font-weight: bold;
         }
         .btn-primary:hover {
-            background-color: #0056b3;
-            border-color: #004d9b;
+            background-color: #3c7830;
+            border-color: #3c7830;
+            color: #111111;
         }
         .btn-secondary {
-            background-color: #6c757d;
-            border-color: #6c757d;
+            background-color: #333;
+            border-color: #509E3F;
+            color: #509E3F;
         }
         .btn-secondary:hover {
-            background-color: #5a6268;
-            border-color: #545b62;
+            background-color: #444;
+            border-color: #509E3F;
+            color: #509E3F;
         }
         .btn-info {
-            background-color: #17a2b8;
-            border-color: #17a2b8;
+            background-color: #333;
+            border-color: #509E3F;
+            color: #509E3F;
         }
         .btn-info:hover {
-            background-color: #138496;
-            border-color: #117a8b;
+            background-color: #444;
+            border-color: #509E3F;
+            color: #509E3F;
         }
         .btn i {
             margin-right: 10px;
             width: 20px;
             text-align: center;
+            color: inherit;
         }
         .alert {
             margin-bottom: 20px;
@@ -103,7 +112,7 @@
                 <a href="{{ url_for('submit_photo') }}" class="btn btn-secondary">
                     <i class="fas fa-upload"></i> Submit New Photo
                 </a>
-                <a href="{{ url_for('logout') }}" class="btn btn-danger">
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </a>
             {% else %}
