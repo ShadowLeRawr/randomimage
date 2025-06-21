@@ -43,8 +43,8 @@ A web application that displays random images with source information, featuring
 
 1. Clone the repository:
    ```
-   git clone <repository-url>
-   cd random-image-app
+   git clone git@github.com:ShadowLeRawr/randomimage.git
+   cd randomimage
    ```
 
 2. Configure environment variables:
