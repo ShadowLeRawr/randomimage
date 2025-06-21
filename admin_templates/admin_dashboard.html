@@ -110,6 +110,48 @@
             background-color: #333;
             border-color: #444 #444 #333;
         }
+        
+        /* Image Modal Styles */
+        .clickable-image {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .clickable-image:hover {
+            transform: scale(1.05);
+        }
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+        }
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90vh;
+        }
+        .modal-title {
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 1.2rem;
+        }
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -182,7 +224,7 @@
                                         </div>
                                     </div>
                                     {% if request.pending_path %}
-                                        <img src="{{ url_for('serve_pending_image', filename=request.filename) }}" alt="Preview" class="photo-preview">
+                                        <img src="{{ url_for('serve_pending_image', filename=request.filename) }}" alt="Preview" class="photo-preview clickable-image" data-image-url="{{ url_for('serve_pending_image', filename=request.filename) }}" data-image-title="{{ request.filename }}">
                                     {% else %}
                                         <p class="text-warning">Image file not found</p>
                                     {% endif %}
@@ -215,7 +257,7 @@
                                         {% endif %}
                                     </div>
                                     {% if request.approved_path %}
-                                        <img src="{{ url_for('serve_approved_image', filename=request.filename) }}" alt="Preview" class="photo-preview">
+                                        <img src="{{ url_for('serve_approved_image', filename=request.filename) }}" alt="Preview" class="photo-preview clickable-image" data-image-url="{{ url_for('serve_approved_image', filename=request.filename) }}" data-image-title="{{ request.filename }}">
                                     {% else %}
                                         <p class="text-warning">Image file not found</p>
                                     {% endif %}
@@ -258,8 +300,54 @@
         </div>
     </div>
 
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal">
+        <span class="close-modal">&times;</span>
+        <h3 id="modalTitle" class="modal-title"></h3>
+        <img class="modal-content" id="modalImage">
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+        // Image Modal Functionality
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('modalTitle');
+        const closeModal = document.getElementsByClassName('close-modal')[0];
+        
+        // Get all clickable images
+        const images = document.querySelectorAll('.clickable-image');
+        
+        // Add click event to each image
+        images.forEach(img => {
+            img.addEventListener('click', function() {
+                modal.style.display = 'block';
+                modalImg.src = this.getAttribute('data-image-url');
+                modalTitle.textContent = this.getAttribute('data-image-title');
+            });
+        });
+        
+        // Close the modal when clicking the × button
+        closeModal.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+        
+        // Close the modal when clicking outside the image
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Close the modal when pressing Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modal.style.display === 'block') {
+                modal.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 </html>
