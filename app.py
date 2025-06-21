@@ -7,8 +7,7 @@ import json
 app = Flask(__name__)
 
 # Replace with your actual SauceNao API key
-SAUCENAO_API_KEY = '84e1e1b0b5fca8935898b1e1ce4d033c35137c65'
-SAUCENAO_API_URL = 'https://saucenao.com/search.php'
+SAUCENAO_API_KEY = 'APIKEYHERE'
 
 # The path to the images folder relative to the Flask app
 IMAGES_FOLDER_INTERNAL = 'images'
