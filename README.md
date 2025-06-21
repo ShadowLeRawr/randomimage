@@ -63,6 +63,12 @@ A web application that displays random images with source information, featuring
    - Admin panel: http://localhost/admin
    - Photo submission: http://localhost/submit_photo
 
+## Live Demo
+
+A live demo of the application is hosted at:
+- Main site: https://slitsndicks.furryrefuge.com
+- Admin panel: https://slitsndicksadmin.furryrefuge.com
+
 ## Docker Configuration
 
 The application is containerized using Docker with three services:
@@ -124,7 +130,3 @@ For production deployment:
 - Always change default credentials before deployment.
 - Regularly update dependencies to address security vulnerabilities.
 - Configure proper file upload limits and validation.
-
-## License
-
-[Specify your license information here]
