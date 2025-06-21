@@ -3,6 +3,9 @@ import random
 import shutil
 import sqlite3
 from datetime import datetime
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 from flask import Flask, jsonify, render_template, send_from_directory, request, redirect, url_for, flash, session, g
 import requests
@@ -11,6 +14,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+
+# Thread pool for background tasks
+thread_pool = ThreadPoolExecutor(max_workers=4)
+
+# Cache for source information results
+source_cache = {}
 
 # Secret key for session management
 app.config['SECRET_KEY'] = 'super_secret_key_for_app'

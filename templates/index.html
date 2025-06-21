@@ -151,6 +151,16 @@
         // Reset source info to show it's loading
         sourceInfoDiv.innerHTML = '<p>Source Information:</p><p>Loading source information... <div class="loading"></div></p>';
         
+        // Create a new Image object to preload the image
+        const preloadImage = (imageUrl) => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(imageUrl);
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = imageUrl;
+            });
+        };
+        
         // First, fetch just the random image (fast response)
         fetch('/random-image')
             .then(response => {
@@ -163,12 +173,23 @@
             })
             .then(data => {
                 if (data.imageUrl) {
-                    // Display the image immediately
+                    // Display the image immediately without waiting for source info
                     randomImageElement.src = data.imageUrl;
                     randomImageElement.alt = 'Random Image';
                     
-                    // Then fetch source information asynchronously
-                    fetchSourceInfo(data.filename);
+                    // Preload the image to ensure it's in the browser cache
+                    preloadImage(data.imageUrl)
+                        .then(() => {
+                            console.log('Image loaded successfully');
+                        })
+                        .catch(error => {
+                            console.error('Error preloading image:', error);
+                        });
+                    
+                    // Then fetch source information asynchronously in a separate, non-blocking request
+                    setTimeout(() => {
+                        fetchSourceInfo(data.filename);
+                    }, 100); // Small delay to prioritize image loading
                 } else {
                     sourceInfoDiv.innerHTML = `<p style="color: red;">Error: No image URL received: ${data.error || 'Unknown error'}</p>`;
                 }
