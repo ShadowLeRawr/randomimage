@@ -160,8 +160,7 @@ def update_photo_request_rejected(id):
         ['rejected', id]
     )
 
-# Initialize the database before the first request
-@app.before_first_request
+# Initialize the database with app context
 def init_app():
     # Create tables if they don't exist
     create_tables()
@@ -182,6 +181,14 @@ def init_app():
             ["Welcome to the Admin Dashboard! Please update this announcement through the 'Announcements' section."]
         )
         print("Default announcement added.", flush=True)
+
+# Call init_app with app context for each request
+@app.before_request
+def before_request():
+    if not hasattr(g, 'initialized'):
+        with app.app_context():
+            init_app()
+        g.initialized = True
 
 # --- Main App Routes ---
 
