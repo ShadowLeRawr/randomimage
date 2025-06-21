@@ -491,6 +491,15 @@ def serve_pending_image(filename):
     except FileNotFoundError:
         return "Pending image not found for preview.", 404
 
+# Serve Approved Image
+@app.route('/approved_images/<path:filename>')
+@login_required
+def serve_approved_image(filename):
+    try:
+        return send_from_directory(IMAGES_FOLDER_INTERNAL, filename)
+    except FileNotFoundError:
+        return "Approved image not found for preview.", 404
+
 # Photo Submission Form
 @app.route('/submit_photo', methods=['GET', 'POST'])
 def submit_photo():
