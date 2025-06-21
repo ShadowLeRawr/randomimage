@@ -35,6 +35,25 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
+# Initialize the database before the first request
+@admin_app.before_first_request
+def init_app():
+    # Create tables if they don't exist
+    create_tables()
+    
+    # Create a default admin user if none exists
+    if not get_user_by_username('admin'):
+        create_user('admin', 'adminpass')
+        print("\nDefault admin user 'admin' created with password 'adminpass'.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
+    
+    # Add a default announcement if none exists
+    if not query_db('SELECT * FROM announcements LIMIT 1'):
+        insert_db(
+            'INSERT INTO announcements (text) VALUES (?)',
+            ["Welcome to the Admin Dashboard! Please update this announcement through the 'Announcements' section."]
+        )
+        print("Default announcement added for admin app.", flush=True)
+
 def query_db(query, args=(), one=False):
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
