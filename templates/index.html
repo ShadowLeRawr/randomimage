@@ -51,6 +51,12 @@
         background-color: #3c7830; /* Darker green on hover */
     }
 
+    .button-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
     #sourceInfo {
         margin-top: 20px;
         padding: 15px;
@@ -92,6 +98,20 @@
         color: #ff6b6b !important; /* Reddish error text */
     }
 
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(80, 158, 63, 0.3);
+      border-radius: 50%;
+      border-top-color: #509E3F;
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
   </style>
 </head>
@@ -99,7 +119,11 @@
   <h1>Slits n Dicks :3</h1>
 
   <img id="randomImage" src="" alt="Random Image">
-  <button id="spiceButton">Random Spice</button>
+  
+  <div class="button-container">
+    <button id="spiceButton">Random Spice</button>
+    <button id="submitButton" onclick="window.location.href='/submit_photo'">Submit New Photo</button>
+  </div>
 
   <div id="sourceInfo">
     <p>Source Information:</p>
@@ -117,58 +141,68 @@
     const artistInfoElement = document.getElementById('artistInfo');
     const similarityInfoElement = document.getElementById('similarityInfo');
 
-
-    const fetchRandomImageAndSource = () => {
-        sourceInfoDiv.innerHTML = '<p>Loading image and source info...</p>'; // Loading indicator
-
-        // Reset source info content to only the title
-        sourceLinkElement.innerHTML = '';
-        artistInfoElement.innerHTML = '';
-        similarityInfoElement.innerHTML = '';
-
-
-        fetch('/random-image-with-source') // New endpoint in Flask
+    // Function to load just the image
+    const fetchRandomImage = () => {
+        // Reset the image and show loading state
+        randomImageElement.src = '';
+        randomImageElement.alt = 'Loading...';
+        
+        // Reset source info to show it's loading
+        sourceInfoDiv.innerHTML = '<p>Source Information:</p><p>Loading source information... <div class="loading"></div></p>';
+        
+        fetch('/random-image-with-source')
             .then(response => {
                 if (!response.ok) {
-                     // Attempt to read error message from server
-                     return response.json().then(err => { throw new Error(`HTTP error! status: ${response.status}, Message: ${err.error || response.statusText}`); });
+                    return response.json().then(err => { 
+                        throw new Error(`HTTP error! status: ${response.status}, Message: ${err.error || response.statusText}`); 
+                    });
                 }
                 return response.json();
             })
             .then(data => {
                 if (data.imageUrl) {
+                    // Display the image immediately
                     randomImageElement.src = data.imageUrl;
-
-                    // Display source information
-                    if (data.source_results && data.source_results.length > 0) {
-                         const result = data.source_results[0]; // Display the top result
-                         sourceInfoDiv.innerHTML = '<p>Source Information:</p>'; // Clear loading message and keep title
-
-                         sourceLinkElement.innerHTML = `<strong>Source:</strong> <a href="${result.source_url}" target="_blank">${result.source_url}</a>`;
-                         artistInfoElement.innerHTML = `<strong>Artist:</strong> ${result.artist}`;
-                         similarityInfoElement.innerHTML = `<strong>Similarity:</strong> ${result.similarity}%`;
-
-                         sourceInfoDiv.appendChild(sourceLinkElement);
-                         sourceInfoDiv.appendChild(artistInfoElement);
-                         sourceInfoDiv.appendChild(similarityInfoElement);
-
-                    } else {
-                        sourceInfoDiv.innerHTML = '<p>Source Information:</p><p>No source information found on SauceNao.</p>';
-                    }
+                    randomImageElement.alt = 'Random Image';
+                    
+                    // Then process source information asynchronously
+                    processSourceInfo(data.source_results);
                 } else {
-                     sourceInfoDiv.innerHTML = `<p style="color: red;">Error: No image URL received: ${data.error || 'Unknown error'}</p>`; // Display more specific error
+                    sourceInfoDiv.innerHTML = `<p style="color: red;">Error: No image URL received: ${data.error || 'Unknown error'}</p>`;
                 }
             })
             .catch(error => {
-                sourceInfoDiv.innerHTML = `<p style="color: red;">Error fetching image and source: ${error.message}</p>`; // Display fetch error
+                sourceInfoDiv.innerHTML = `<p style="color: red;">Error fetching image: ${error.message}</p>`;
             });
     };
 
-    spiceButton.addEventListener('click', fetchRandomImageAndSource);
+    // Function to process source information separately
+    const processSourceInfo = (sourceResults) => {
+        // Clear previous source info
+        sourceLinkElement.innerHTML = '';
+        artistInfoElement.innerHTML = '';
+        similarityInfoElement.innerHTML = '';
+        
+        if (sourceResults && sourceResults.length > 0) {
+            const result = sourceResults[0]; // Display the top result
+            sourceInfoDiv.innerHTML = '<p>Source Information:</p>'; // Reset to just the title
+            
+            sourceLinkElement.innerHTML = `<strong>Source:</strong> <a href="${result.source_url}" target="_blank">${result.source_url}</a>`;
+            artistInfoElement.innerHTML = `<strong>Artist:</strong> ${result.artist}`;
+            similarityInfoElement.innerHTML = `<strong>Similarity:</strong> ${result.similarity}%`;
+            
+            sourceInfoDiv.appendChild(sourceLinkElement);
+            sourceInfoDiv.appendChild(artistInfoElement);
+            sourceInfoDiv.appendChild(similarityInfoElement);
+        } else {
+            sourceInfoDiv.innerHTML = '<p>Source Information:</p><p>No source information found on SauceNao.</p>';
+        }
+    };
 
+    spiceButton.addEventListener('click', fetchRandomImage);
 
-    // Load a random image and source info when the page loads initially
-    document.addEventListener('DOMContentLoaded', fetchRandomImageAndSource);
+    // Load a random image when the page loads initially
+    document.addEventListener('DOMContentLoaded', fetchRandomImage);
   </script>
 </body>
 </html>
