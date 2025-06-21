@@ -51,7 +51,10 @@ A web application that displays random images with source information, featuring
    - Create a `.env` file in the project root with:
      ```
      SAUCENAO_API_KEY=your_api_key_here
+     ADMIN_USERNAME=your_admin_username
+     ADMIN_PASSWORD=your_admin_password
      ```
+   - If ADMIN_USERNAME and ADMIN_PASSWORD are not provided, the default values 'admin' and 'adminpass' will be used.
 
 3. Build and start the containers:
    ```

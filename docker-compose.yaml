@@ -30,6 +30,8 @@ services:
     environment:
       - FLASK_APP=admin_templates/admin_app.py
       - FLASK_ENV=production
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-adminpass}
     command: gunicorn --bind 0.0.0.0:5001 admin_templates.admin_app:admin_app
 
   nginx:

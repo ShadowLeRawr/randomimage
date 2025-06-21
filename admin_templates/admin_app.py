@@ -41,10 +41,14 @@ def init_app():
     # Create tables if they don't exist
     create_tables()
     
+    # Get admin credentials from environment variables or use defaults
+    admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpass')
+    
     # Create a default admin user if none exists
-    if not get_user_by_username('admin'):
-        create_user('admin', 'adminpass')
-        print("\nDefault admin user 'admin' created with password 'adminpass'.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
+    if not get_user_by_username(admin_username):
+        create_user(admin_username, admin_password)
+        print(f"\nDefault admin user '{admin_username}' created with the provided password.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
     
     # Add a default announcement if none exists
     if not query_db('SELECT * FROM announcements LIMIT 1'):
@@ -347,10 +351,14 @@ if __name__ == '__main__':
         # Create tables if they don't exist
         create_tables()
 
+        # Get admin credentials from environment variables or use defaults
+        admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'adminpass')
+
         # Create a default admin user if none exists
-        if not get_user_by_username('admin'):
-            create_user('admin', 'adminpass')
-            print("\nDefault admin user 'admin' created with password 'adminpass'.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
+        if not get_user_by_username(admin_username):
+            create_user(admin_username, admin_password)
+            print(f"\nDefault admin user '{admin_username}' created with the provided password.\n!!! CHANGE THIS PASSWORD IMMEDIATELY IN PRODUCTION !!!\n", flush=True)
 
         # Add a default announcement if none exists
         if not query_db('SELECT * FROM announcements LIMIT 1'):
