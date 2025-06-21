@@ -10,7 +10,7 @@ import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
 
 # Secret key for session management
 app.config['SECRET_KEY'] = 'super_secret_key_for_app'

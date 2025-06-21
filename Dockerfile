@@ -12,11 +12,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
-
 # Create data directory structure
 RUN mkdir -p /app/data/images /app/data/pending_images /app/data/sqlite
+
+# Copy application code
+COPY app.py .
+COPY templates/ ./templates/
+COPY admin_templates/ ./admin_templates/
+
+# Copy existing images to data directory if they exist
+COPY images/ ./data/images/
 
 # Set environment variables
 ENV FLASK_APP=app.py
