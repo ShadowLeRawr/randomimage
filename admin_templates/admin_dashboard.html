@@ -167,7 +167,7 @@
                                         <div class="photo-item-info">
                                             <h5>{{ request.user_name }}</h5>
                                             <p><strong>Filename:</strong> {{ request.filename }}</p>
-                                            <p><strong>Submitted:</strong> {{ request.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                            <p><strong>Submitted:</strong> {{ request.submission_date }}</p>
                                             {% if request.description %}
                                                 <p><strong>Description:</strong> {{ request.description }}</p>
                                             {% endif %}
@@ -208,8 +208,8 @@
                                     <div class="photo-item-info">
                                         <h5>{{ request.user_name }}</h5>
                                         <p><strong>Filename:</strong> {{ request.filename }}</p>
-                                        <p><strong>Submitted:</strong> {{ request.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                                        <p><strong>Approved:</strong> {{ request.approval_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                        <p><strong>Submitted:</strong> {{ request.submission_date }}</p>
+                                        <p><strong>Approved:</strong> {{ request.approval_date }}</p>
                                         {% if request.description %}
                                             <p><strong>Description:</strong> {{ request.description }}</p>
                                         {% endif %}
@@ -241,8 +241,8 @@
                                     <div class="photo-item-info">
                                         <h5>{{ request.user_name }}</h5>
                                         <p><strong>Filename:</strong> {{ request.filename }}</p>
-                                        <p><strong>Submitted:</strong> {{ request.submission_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-                                        <p><strong>Rejected:</strong> {{ request.approval_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                        <p><strong>Submitted:</strong> {{ request.submission_date }}</p>
+                                        <p><strong>Rejected:</strong> {{ request.approval_date }}</p>
                                         {% if request.description %}
                                             <p><strong>Description:</strong> {{ request.description }}</p>
                                         {% endif %}
