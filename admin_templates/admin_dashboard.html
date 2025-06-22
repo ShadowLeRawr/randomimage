@@ -180,7 +180,7 @@
         <div class="card mb-4">
             <div class="card-body d-flex align-items-center">
                 <form action="{{ url_for('update_motd') }}" method="post" class="d-flex flex-grow-1 align-items-center">
-                    <label for="motd_text" class="mr-3 mb-0"><strong>Message of the Day:</strong></label>
+                    <label for="motd_text" class="mr-3 mb-0"><strong>MOTD:</strong></label>
                     <input type="text" class="form-control mr-3" id="motd_text" name="motd_text" value="{{ current_motd }}" placeholder="Set a message to display on the main page">
                     <button type="submit" class="btn btn-primary mr-2">
                         <i class="fas fa-save"></i> Save
