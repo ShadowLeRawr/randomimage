@@ -176,6 +176,24 @@
             {% endif %}
         {% endwith %}
 
+        <!-- MOTD Management - Single line above tabs -->
+        <div class="card mb-4">
+            <div class="card-body d-flex align-items-center">
+                <form action="{{ url_for('update_motd') }}" method="post" class="d-flex flex-grow-1 align-items-center">
+                    <label for="motd_text" class="mr-3 mb-0"><strong>Message of the Day:</strong></label>
+                    <input type="text" class="form-control mr-3" id="motd_text" name="motd_text" value="{{ current_motd }}" placeholder="Set a message to display on the main page">
+                    <button type="submit" class="btn btn-primary mr-2">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    {% if current_motd %}
+                    <a href="{{ url_for('delete_motd') }}" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
                 <a class="nav-link active" id="pending-tab" data-toggle="tab" href="#pending" role="tab" aria-controls="pending" aria-selected="true">
@@ -194,32 +212,6 @@
             </li>
         </ul>
 
-        <!-- MOTD Management Section -->
-        <div class="card mb-4">
-            <div class="card-header">
-                Message of the Day (MOTD)
-            </div>
-            <div class="card-body">
-                <p>Set a message to display as an info banner on the main page. Leave it empty to disable the banner.</p>
-                
-                <form action="{{ url_for('update_motd') }}" method="post">
-                    <div class="form-group">
-                        <label for="motd_text">Message Text:</label>
-                        <textarea class="form-control" id="motd_text" name="motd_text" rows="3">{{ current_motd }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Message
-                        </button>
-                        {% if current_motd %}
-                        <a href="{{ url_for('delete_motd') }}" class="btn btn-danger">
-                            <i class="fas fa-trash-alt"></i> Delete Message
-                        </a>
-                        {% endif %}
-                    </div>
-                </form>
-            </div>
-        </div>
 
         <div class="tab-content" id="myTabContent">
             <!-- Pending Photos Tab -->
