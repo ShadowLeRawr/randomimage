@@ -35,6 +35,7 @@ DATA_DIR = 'data'
 IMAGES_FOLDER_INTERNAL = os.path.join(DATA_DIR, 'images')
 PENDING_UPLOADS_FOLDER = os.path.join(DATA_DIR, 'pending_images')
 DATABASE_PATH = os.path.join(DATA_DIR, 'sqlite', 'site.db')
+MOTD_PATH = os.path.join(DATA_DIR, 'motd.txt')
 
 # File upload configuration
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 Megabytes limit for file uploads
@@ -120,6 +121,39 @@ def create_tables():
 def is_logged_in():
     return session.get('logged_in', False)
 
+def get_motd():
+    """Read the Message of the Day from the file if it exists."""
+    if os.path.exists(MOTD_PATH):
+        try:
+            with open(MOTD_PATH, 'r') as f:
+                return f.read().strip()
+        except Exception as e:
+            print(f"Error reading MOTD file: {e}", flush=True)
+    return None
+
+def save_motd(message):
+    """Save the Message of the Day to a file."""
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs(os.path.dirname(MOTD_PATH), exist_ok=True)
+        
+        with open(MOTD_PATH, 'w') as f:
+            f.write(message)
+        return True
+    except Exception as e:
+        print(f"Error saving MOTD file: {e}", flush=True)
+        return False
+
+def delete_motd():
+    """Delete the Message of the Day file if it exists."""
+    if os.path.exists(MOTD_PATH):
+        try:
+            os.remove(MOTD_PATH)
+            return True
+        except Exception as e:
+            print(f"Error deleting MOTD file: {e}", flush=True)
+    return False
+
 def login_required(f):
     def decorated_function(*args, **kwargs):
         if not is_logged_in():
@@ -204,7 +238,9 @@ def before_request():
 # Serve the main HTML page
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Get the Message of the Day if it exists
+    motd = get_motd()
+    return render_template('index.html', motd=motd)
 
 # Serve images
 @app.route('/images/<filename>')
@@ -428,11 +464,46 @@ def admin_dashboard():
     approved_requests = get_approved_requests()
     # Get rejected photo requests
     rejected_requests = get_rejected_requests()
+    # Get current MOTD
+    current_motd = get_motd() or ""
     
     return render_template('admin_templates/admin_dashboard.html', 
                           pending_requests=pending_requests, 
                           approved_requests=approved_requests, 
-                          rejected_requests=rejected_requests)
+                          rejected_requests=rejected_requests,
+                          current_motd=current_motd)
+
+# Update MOTD
+@app.route('/update_motd', methods=['POST'])
+@login_required
+def update_motd():
+    motd_text = request.form.get('motd_text', '').strip()
+    
+    if motd_text:
+        # Save the MOTD to the file
+        if save_motd(motd_text):
+            flash('Message of the Day updated successfully!', 'success')
+        else:
+            flash('Error updating Message of the Day.', 'danger')
+    else:
+        # If the MOTD is empty, delete the file
+        if delete_motd():
+            flash('Message of the Day removed.', 'info')
+        else:
+            flash('Error removing Message of the Day.', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
+
+# Delete MOTD
+@app.route('/delete_motd')
+@login_required
+def delete_motd_route():
+    if delete_motd():
+        flash('Message of the Day removed.', 'success')
+    else:
+        flash('Error removing Message of the Day.', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
 
 # Approve Photo
 @app.route('/approve/<int:id>')

@@ -117,6 +117,12 @@
   </style>
 </head>
 <body>
+  {% if motd %}
+  <div id="motdBanner" style="background-color: #333; color: #509E3F; padding: 15px; margin-bottom: 20px; border: 1px solid #509E3F; border-radius: 5px; text-align: center; width: 90%; max-width: 800px;">
+    <i class="fas fa-bullhorn" style="margin-right: 10px;"></i>{{ motd }}
+  </div>
+  {% endif %}
+  
   <h1>Slits n Dicks :3</h1>
 
   <img id="randomImage" src="" alt="Random Image">
