@@ -261,6 +261,27 @@ def serve_image(filename):
     except FileNotFoundError:
         return jsonify({"error": "Image not found."}), 404
 
+# Endpoint to get the total number of images
+@app.route('/image-count')
+def get_image_count():
+    try:
+        # Check if the directory exists
+        if not os.path.exists(IMAGES_FOLDER_INTERNAL):
+            return jsonify({"error": "Images folder not found on the server."}), 500
+
+        # Get a list of all files in the images folder
+        files = os.listdir(IMAGES_FOLDER_INTERNAL)
+
+        # Filter to include only common image extensions and exclude directories
+        image_files = [f for f in files if os.path.isfile(os.path.join(IMAGES_FOLDER_INTERNAL, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+
+        # Return the count of image files
+        return jsonify({"count": len(image_files)})
+
+    except Exception as e:
+        print(f"An unexpected error occurred in get_image_count: {e}", flush=True)
+        return jsonify({"error": f"An internal server error occurred: {e}"}), 500
+
 # Endpoint to get just a random image URL (fast response)
 @app.route('/random-image')
 def get_random_image():

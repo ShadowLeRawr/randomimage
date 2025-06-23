@@ -98,6 +98,18 @@
     #sourceInfo p[style*="color: red"] {
         color: #ff6b6b !important; /* Reddish error text */
     }
+    
+    #imageCounter {
+      margin-bottom: 20px;
+      color: #509E3F; /* Green text to match theme */
+      font-size: 16px;
+      font-weight: bold;
+      padding: 5px 10px;
+      border: 1px solid #509E3F;
+      border-radius: 5px;
+      background-color: #222;
+      display: inline-block;
+    }
 
     .loading {
       display: inline-block;
@@ -131,6 +143,8 @@
     <button id="spiceButton"><i class="fas fa-random"></i> Random Spice</button>
     <button id="uploadButton" onclick="window.location.href='/submit_photo'"><i class="fas fa-upload"></i> Submit Image</button>
   </div>
+  
+  <div id="imageCounter">Total images in collection: <span id="counter">Loading...</span></div>
 
   <div id="sourceInfo">
     <p>Source Information:</p>
@@ -147,6 +161,29 @@
     const sourceLinkElement = document.getElementById('sourceLink');
     const artistInfoElement = document.getElementById('artistInfo');
     const similarityInfoElement = document.getElementById('similarityInfo');
+    const counterElement = document.getElementById('counter');
+    
+    // Function to fetch the total image count
+    const fetchImageCount = () => {
+        fetch('/image-count')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.count !== undefined) {
+                    counterElement.textContent = data.count;
+                } else {
+                    counterElement.textContent = 'Error';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching image count:', error);
+                counterElement.textContent = 'Error';
+            });
+    };
 
     // Function to load the image first, then fetch source info asynchronously
     const fetchRandomImage = () => {
@@ -250,8 +287,11 @@
 
     spiceButton.addEventListener('click', fetchRandomImage);
 
-    // Load a random image when the page loads initially
-    document.addEventListener('DOMContentLoaded', fetchRandomImage);
+    // Load a random image and fetch image count when the page loads initially
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchRandomImage();
+        fetchImageCount();
+    });
   </script>
 </body>
 </html>
