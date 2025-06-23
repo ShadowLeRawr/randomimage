@@ -125,6 +125,25 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    
+    #supportLink {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 14px;
+      z-index: 100;
+    }
+    
+    #supportLink a {
+      color: #509E3F;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    
+    #supportLink a:hover {
+      color: #a0e090;
+      text-decoration: underline;
+    }
 
   </style>
 </head>
@@ -293,5 +312,9 @@
         fetchImageCount();
     });
   </script>
+  
+  <div id="supportLink">
+    <a href="https://cash.app/$TheTavernNetworkInc" target="_blank">Please Support The Tavern Network</a>
+  </div>
 </body>
 </html>
