@@ -144,6 +144,29 @@
       color: #a0e090;
       text-decoration: underline;
     }
+    
+    #authorCredit {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      font-size: 14px;
+      z-index: 100;
+      background-color: #111111;
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: #222222;
+    }
+    
+    #authorCredit a {
+      color: #509E3F;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    
+    #authorCredit a:hover {
+      color: #a0e090;
+      text-decoration: underline;
+    }
 
   </style>
 </head>
@@ -156,7 +179,10 @@
   
   <h1>Slits n Dicks :3</h1>
 
-  <img id="randomImage" src="" alt="Random Image">
+  <div id="mediaContainer">
+    <img id="randomImage" src="" alt="Random Image" style="display: none;">
+    <video id="randomVideo" controls autoplay loop style="display: none; max-width: 90%; max-height: 70vh; border: 1px solid #509E3F; box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);"></video>
+  </div>
   
   <div class="button-container">
     <button id="spiceButton"><i class="fas fa-random"></i> Random Spice</button>
@@ -175,6 +201,8 @@
 
   <script>
     const randomImageElement = document.getElementById('randomImage');
+    const randomVideoElement = document.getElementById('randomVideo');
+    const mediaContainer = document.getElementById('mediaContainer');
     const spiceButton = document.getElementById('spiceButton');
     const sourceInfoDiv = document.getElementById('sourceInfo');
     const sourceLinkElement = document.getElementById('sourceLink');
@@ -204,10 +232,20 @@
             });
     };
 
-    // Function to load the image first, then fetch source info asynchronously
+    // Function to determine if a file is a video based on its extension
+    const isVideoFile = (filename) => {
+        const videoExtensions = ['.webm', '.mp4'];
+        const lowerFilename = filename.toLowerCase();
+        return videoExtensions.some(ext => lowerFilename.endsWith(ext));
+    };
+    
+    // Function to load the media (image or video) first, then fetch source info asynchronously
     const fetchRandomImage = () => {
-        // Reset the image and show loading state
+        // Reset the media elements and show loading state
         randomImageElement.src = '';
+        randomImageElement.style.display = 'none';
+        randomVideoElement.src = '';
+        randomVideoElement.style.display = 'none';
         randomImageElement.alt = 'Loading...';
         
         // Reset source info to show it's loading
@@ -235,18 +273,37 @@
             })
             .then(data => {
                 if (data.imageUrl) {
-                    // Display the image immediately without waiting for source info
-                    randomImageElement.src = data.imageUrl;
-                    randomImageElement.alt = 'Random Image';
+                    const isVideo = isVideoFile(data.filename);
                     
-                    // Preload the image to ensure it's in the browser cache
-                    preloadImage(data.imageUrl)
-                        .then(() => {
-                            console.log('Image loaded successfully');
-                        })
-                        .catch(error => {
-                            console.error('Error preloading image:', error);
-                        });
+                    if (isVideo) {
+                        // Display video
+                        randomVideoElement.src = data.imageUrl;
+                        randomVideoElement.style.display = 'block';
+                        randomImageElement.style.display = 'none';
+                        
+                        // Add event listeners for video loading
+                        randomVideoElement.onloadeddata = () => {
+                            console.log('Video loaded successfully');
+                        };
+                        randomVideoElement.onerror = (error) => {
+                            console.error('Error loading video:', error);
+                        };
+                    } else {
+                        // Display image
+                        randomImageElement.src = data.imageUrl;
+                        randomImageElement.alt = 'Random Image';
+                        randomImageElement.style.display = 'block';
+                        randomVideoElement.style.display = 'none';
+                        
+                        // Preload the image to ensure it's in the browser cache
+                        preloadImage(data.imageUrl)
+                            .then(() => {
+                                console.log('Image loaded successfully');
+                            })
+                            .catch(error => {
+                                console.error('Error preloading image:', error);
+                            });
+                    }
                     
                     // Then fetch source information asynchronously in a separate, non-blocking request
                     setTimeout(() => {
@@ -315,6 +372,10 @@
   
   <div id="supportLink">
     <a href="https://cash.app/$TheTavernNetworkInc" target="_blank">Please Support The Tavern Network</a>
+  </div>
+  
+  <div id="authorCredit">
+    written by <a href="https://furryrefuge.com" target="_blank">Echo The Chicken</a>
   </div>
 </body>
 </html>

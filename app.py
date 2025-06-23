@@ -272,8 +272,8 @@ def get_image_count():
         # Get a list of all files in the images folder
         files = os.listdir(IMAGES_FOLDER_INTERNAL)
 
-        # Filter to include only common image extensions and exclude directories
-        image_files = [f for f in files if os.path.isfile(os.path.join(IMAGES_FOLDER_INTERNAL, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+        # Filter to include only common image and video extensions and exclude directories
+        image_files = [f for f in files if os.path.isfile(os.path.join(IMAGES_FOLDER_INTERNAL, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webm', '.mp4'))]
 
         # Return the count of image files
         return jsonify({"count": len(image_files)})
@@ -294,8 +294,8 @@ def get_random_image():
         # Get a list of all files and directories in the images folder
         files = os.listdir(IMAGES_FOLDER_INTERNAL)
 
-        # Filter to include only common image extensions and exclude directories
-        image_files = [f for f in files if os.path.isfile(os.path.join(IMAGES_FOLDER_INTERNAL, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+        # Filter to include only common image and video extensions and exclude directories
+        image_files = [f for f in files if os.path.isfile(os.path.join(IMAGES_FOLDER_INTERNAL, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webm', '.mp4'))]
 
         if not image_files:
             print(f"No image files found in {IMAGES_FOLDER_INTERNAL}", flush=True)
@@ -620,7 +620,7 @@ def submit_photo():
             flash('No file selected.', 'warning')
             return redirect(url_for('submit_photo'))
 
-        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webm', 'mp4'}
         def allowed_file(filename):
             return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
